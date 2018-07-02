@@ -121,9 +121,18 @@ export ROS_IP=second_ip_addr
 ```
 
 - exiting ssh
+```
 exit
+```
 
 #### xacro to URDF file
 ```
 rosrun xacro xacro --inorder quadruped_model.xacro > model1.urdf
 ```
+
+# Videos
+- simulation
+https://youtu.be/jo47bkJQrjU
+
+- real quadruped
+https://youtu.be/T0lQ6aDYJkE
