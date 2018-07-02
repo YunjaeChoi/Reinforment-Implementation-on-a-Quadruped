@@ -1,0 +1,24 @@
+<launch>
+  <arg name="model" default="$(find quadruped)/urdf/quadruped_model.xacro" />
+  <arg name="rvizconfig" default="$(find quadruped)/rviz/urdf.rviz" />
+
+  <include file="$(find quadruped)/launch/quadruped_gazebo.launch">
+    <arg name="model" value="$(arg model)" />
+  </include>
+
+  <node name="rviz" pkg="rviz" type="rviz" args="-d $(arg rvizconfig)" />
+
+  <!-- Load joint controller configurations from YAML file to parameter server -->
+  <rosparam command="load" file="$(find quadruped)/config/quadruped_control.yaml"/>
+
+  <!-- load the controllers joint_trajectory_controller-->
+  <node name="controller_spawner" pkg="controller_manager" type="spawner" respawn="false"
+    output="screen" ns="/quadruped" args="joint_trajectory_controller"/>
+
+  <node pkg="robot_state_publisher" type="robot_state_publisher"  name="robot_state_publisher"
+    respawn="false" output="screen">
+    <remap from="/joint_states" to="/quadruped/joint_states" />
+    <param name="publish_frequency" type="double" value="60.0" />
+  </node>
+
+</launch>

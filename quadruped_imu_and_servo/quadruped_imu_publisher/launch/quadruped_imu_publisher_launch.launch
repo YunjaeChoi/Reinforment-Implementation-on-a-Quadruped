@@ -1,0 +1,5 @@
+<launch>
+	<!-- quadruped imu publisher launch file -->
+	<node pkg="quadruped_imu_publisher" type="quadruped_imu_publisher.py" name="imu_publisher" output="screen">
+	</node>
+</launch>

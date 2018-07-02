@@ -1,0 +1,353 @@
+<?xml version="1.0"?>
+<robot name="quadruped" xmlns:xacro="http://ros.org/wiki/xacro">
+  <!-- Gazebo plugin for ROS Control -->
+  <gazebo>
+    <plugin name="gazebo_ros_control" filename="libgazebo_ros_control.so">
+      <robotNamespace>/quadruped</robotNamespace>
+    </plugin>
+  </gazebo>
+
+  <xacro:property name="scaling_factor" value="2.2" />
+  <!--height:z width:y width:x -->
+  <xacro:property name="body_width" value="${scaling_factor*0.108}" />
+  <xacro:property name="body_height" value="${scaling_factor*0.055}" />
+  <xacro:property name="body_mass" value="${(scaling_factor**3)*0.4}" />
+
+  <xacro:property name="imu_size" value="${scaling_factor*0.02}" />
+  <xacro:property name="imu_mass" value="${(scaling_factor**3)*0.05}" />
+
+  <!--height:z width:y depth:x -->
+  <xacro:property name="leg1_height" value="${scaling_factor*0.13}" />
+  <xacro:property name="leg1_width" value="${scaling_factor*0.015}" />
+  <xacro:property name="leg1_depth" value="${scaling_factor*0.015}" />
+  <xacro:property name="leg1_mass" value="${(scaling_factor**3)*0.8}" />
+  <xacro:property name="leg1_joint_low" value="${-pi*2.0/18.0}" />
+  <xacro:property name="leg1_joint_high" value="${pi*2.0/18.0}" />
+
+  <xacro:property name="leg2_height" value="${scaling_factor*0.025}" />
+  <xacro:property name="leg2_width" value="${scaling_factor*0.01}" />
+  <xacro:property name="leg2_depth" value="${scaling_factor*0.1}" />
+  <xacro:property name="leg2_mass" value="${(scaling_factor**3)*0.05}" />
+  <xacro:property name="leg2_joint_low" value="${-pi*2.0/18.0}" />
+  <xacro:property name="leg2_joint_high" value="${pi*2.0/18.0}" />
+  <xacro:property name="leg2_init_pitch" value="${pi*16.0/18.0}" />
+
+  <xacro:property name="leg3_height" value="${scaling_factor*0.052}" />
+  <xacro:property name="leg3_width" value="${scaling_factor*0.015}" />
+  <xacro:property name="leg3_depth" value="${scaling_factor*0.015}" />
+  <xacro:property name="leg3_mass" value="${(scaling_factor**3)*0.1}" />
+  <xacro:property name="leg3_joint_low" value="${-pi*2.0/18.0}" />
+  <xacro:property name="leg3_joint_high" value="${pi*2.0/18.0}" />
+
+  <xacro:property name="leg_tip_mass" value="${(scaling_factor**3)*0.02}" />
+
+  <xacro:property name="servo_vel" value="4.0" />
+  <xacro:property name="servo_effort_limit" value="50.0" />
+
+  <!-- Import Rviz colors -->
+  <xacro:include filename="$(find quadruped)/urdf/materials.xacro" />
+
+  <!-- Inertia -->
+  <xacro:macro name="box_inertial" params="mass width depth">
+    <inertial>
+      <mass value="${mass}" />
+      <inertia ixx="${mass*(width*width+depth*depth)/12.0}" ixy="0.0" ixz="0.0" iyy="${mass*(width*width+depth*depth)/12.0}" iyz="0.0" izz="${mass*(width*width+depth*depth)/12.0}" />
+    </inertial>
+  </xacro:macro>
+
+  <xacro:macro name="sphere_inertial" params="mass radius">
+    <inertial>
+      <mass value="${mass}" />
+      <inertia ixx="0.1" ixy="0.0" ixz="0.0" iyy="0.1" iyz="0.0" izz="0.1"/>
+    </inertial>
+  </xacro:macro>
+
+  <!-- Quadruped -->
+  <link name="dummy_link">
+    <visual>
+      <geometry>
+        <box size="0.01 0.01 0.01"/>
+      </geometry>
+      <material name="black"/>
+    </visual>
+    <inertial>
+      <mass value="0.01" />
+      <inertia ixx="0.00001" ixy="0.0" ixz="0.0" iyy="0.00001" iyz="0.0" izz="0.00001" />
+    </inertial>
+    <gazebo reference="dummy_link">
+    </gazebo>
+  </link>
+
+  <link name="base_link">
+    <visual>
+      <geometry>
+        <box size="${body_width} ${body_width} ${body_height}"/>
+      </geometry>
+      <material name="black"/>
+    </visual>
+    <collision>
+      <geometry>
+        <box size="${body_width} ${body_width} ${body_height}"/>
+      </geometry>
+    </collision>
+    <xacro:box_inertial mass="${body_mass}" width="${body_width}" depth="${body_width}"/>
+  </link>
+  <joint name="dummy_base_joint" type="fixed">
+    <parent link="dummy_link"/>
+    <child link="base_link"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+  </joint>
+  <gazebo reference="base_link">
+    <mu1>100000.0</mu1>
+    <mu2>100000.0</mu2>
+    <material>Gazebo/Black</material>
+  </gazebo>
+  <gazebo reference="dummy_base_joint">
+    <provideFeedback>true</provideFeedback>
+    <disableFixedJointLumping>true</disableFixedJointLumping>
+  </gazebo>
+
+  <link name="imu_link">
+    <visual>
+      <geometry>
+        <box size="${imu_size} ${imu_size} ${imu_size}"/>
+      </geometry>
+      <material name="white"/>
+    </visual>
+    <collision>
+      <geometry>
+        <box size="${imu_size} ${imu_size} ${imu_size}"/>
+      </geometry>
+    </collision>
+    <xacro:box_inertial mass="${imu_mass}" width="${imu_size}" depth="${imu_size}"/>
+  </link>
+  <joint name="base_imu_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="imu_link"/>
+    <origin xyz="0 0 ${(body_height/2.0)+(imu_size/2.0)}" rpy="0 0 0"/>
+  </joint>
+  <gazebo reference="imu_link">
+    <material>Gazebo/White</material>
+    <gravity>true</gravity>
+    <sensor name="imu_sensor" type="imu">
+      <always_on>true</always_on>
+      <update_rate>100</update_rate>
+      <visualize>true</visualize>
+      <topic>__default_topic__</topic>
+      <plugin filename="libgazebo_ros_imu_sensor.so" name="imu_plugin">
+        <robotNamespace>/quadruped</robotNamespace>
+        <topicName>imu</topicName>
+        <bodyName>imu_link</bodyName>
+        <updateRateHZ>100.0</updateRateHZ>
+        <gaussianNoise>0.0</gaussianNoise>
+        <xyzOffset>0 0 0</xyzOffset>
+        <rpyOffset>0 0 0</rpyOffset>
+        <frameName>imu_link</frameName>
+      </plugin>
+      <pose>0 0 0 0 0 0</pose>
+    </sensor>
+  </gazebo>
+  <gazebo reference="base_imu_joint">
+    <provideFeedback>true</provideFeedback>
+    <disableFixedJointLumping>true</disableFixedJointLumping>
+  </gazebo>
+
+  <xacro:macro name="leg_tip" params="prefix suffix reflect_right">
+    <link name="${prefix}_${suffix}_leg_tip">
+      <visual>
+        <origin xyz="0 0 0" rpy="0 0 0" />
+        <geometry>
+          <sphere radius="${leg1_depth*1.41/2.0}"/>
+        </geometry>
+        <material name="black"/>
+      </visual>
+      <collision>
+        <origin xyz="0 0 0" rpy="0 0 0" />
+        <geometry>
+          <sphere radius="${leg1_depth/2.0}"/>
+        </geometry>
+      </collision>
+      <xacro:sphere_inertial mass="${leg_tip_mass}" radius="${leg1_depth/2.0}"/>
+    </link>
+    <joint name="${prefix}_${suffix}_leg_tip_joint" type="fixed">
+      <parent link="${prefix}_${suffix}_leg1"/>
+      <child link="${prefix}_${suffix}_leg_tip"/>
+      <origin xyz="0 ${-reflect_right*leg1_width/2.0} ${-leg1_height-leg1_depth*1.41/4.0}" rpy="0 0 0"/>
+    </joint>
+    <gazebo reference="${prefix}_${suffix}_leg_tip">
+      <minDepth>0.0002</minDepth>
+      <collision name="${prefix}_${suffix}_leg_tip_collision_1">
+        <geometry>
+          <sphere>
+            <radius>${leg1_depth/2.0}</radius>
+          </sphere>
+        </geometry>
+        <surface>
+          <friction>
+            <ode>
+              <mu>100000.0</mu>
+              <mu2>100000.0</mu2>
+            </ode>
+            <torsional>
+              <coefficient>1000000</coefficient>
+              <use_patch_radius>true</use_patch_radius>
+              <surface_radius>${leg1_depth/2.0}</surface_radius>
+              <patch_radius>${leg1_depth/2.0}</patch_radius>
+            </torsional>
+          </friction>
+        </surface>
+      </collision>
+      <material>Gazebo/Black</material>
+    </gazebo>
+    <gazebo reference="${prefix}_${suffix}_leg_tip_joint">
+      <provideFeedback>true</provideFeedback>
+      <disableFixedJointLumping>true</disableFixedJointLumping>
+    </gazebo>
+  </xacro:macro>
+
+  <xacro:macro name="leg1" params="prefix suffix reflect_right">
+    <link name="${prefix}_${suffix}_leg1">
+      <visual>
+        <origin xyz="0 ${-reflect_right*leg1_width/2.0} ${-leg1_height/2.0}" rpy="0 0 0" />
+        <geometry>
+          <box size="${leg1_depth} ${leg1_width} ${leg1_height}"/>
+        </geometry>
+        <material name="black"/>
+      </visual>
+      <collision>
+        <origin xyz="0 ${-reflect_right*leg1_width/2.0} ${-leg1_height/2.0}" rpy="0 0 0" />
+        <geometry>
+          <box size="${leg1_depth} ${leg1_width} ${leg1_height}"/>
+        </geometry>
+      </collision>
+      <xacro:box_inertial mass="${leg1_mass}" width="${leg1_width}" depth="${leg1_height}"/>
+    </link>
+    <joint name="${prefix}_${suffix}_leg1_joint" type="revolute">
+      <axis xyz="0 1 0" />
+      <parent link="${prefix}_${suffix}_leg2"/>
+      <child link="${prefix}_${suffix}_leg1"/>
+      <origin xyz="${leg2_depth*cos(pi-leg2_init_pitch)} 0 ${leg2_depth*sin(pi-leg2_init_pitch)}" rpy="0 ${-pi+leg2_init_pitch} 0"/>
+      <limit lower="${leg1_joint_low}" upper="${leg1_joint_high}" effort="${servo_effort_limit}" velocity="${servo_vel}"/>
+      <dynamics friction="0.0" />
+    </joint>
+    <gazebo reference="${prefix}_${suffix}_leg1">
+      <mu1>100000.0</mu1>
+      <mu2>100000.0</mu2>
+      <material>Gazebo/White</material>
+    </gazebo>
+  </xacro:macro>
+
+  <xacro:macro name="leg2" params="prefix suffix reflect_right">
+    <link name="${prefix}_${suffix}_leg2">
+      <visual>
+        <origin xyz="${leg2_depth*cos(pi-leg2_init_pitch)/2.0} ${reflect_right*leg2_width/2.0} ${leg2_depth*sin(pi-leg2_init_pitch)/2.0}" rpy="0 ${leg2_init_pitch} 0" />
+        <geometry>
+          <box size="${leg2_depth} ${leg2_width} ${leg2_height}"/>
+        </geometry>
+        <material name="white"/>
+      </visual>
+      <collision>
+        <origin xyz="${leg2_depth*cos(pi-leg2_init_pitch)/2.0} ${reflect_right*leg2_width/2.0} ${leg2_depth*sin(pi-leg2_init_pitch)/2.0}" rpy="0 ${leg2_init_pitch} 0" />
+        <geometry>
+          <box size="${leg2_depth} ${leg2_width} ${leg2_height}"/>
+        </geometry>
+      </collision>
+      <xacro:box_inertial mass="${leg2_mass}" width="${leg2_width}" depth="${leg2_depth}"/>
+    </link>
+    <joint name="${prefix}_${suffix}_leg2_joint" type="revolute">
+      <axis xyz="0 1 0" rpy="0 0 0" />
+      <parent link="${prefix}_${suffix}_leg3"/>
+      <child link="${prefix}_${suffix}_leg2"/>
+      <origin xyz="${leg3_depth/2.0} ${reflect_right*leg3_width/2.0} 0" />
+      <limit lower="${leg2_joint_low}" upper="${leg2_joint_high}" effort="${servo_effort_limit}" velocity="${servo_vel}"/>
+      <dynamics friction="0.0" />
+    </joint>
+    <gazebo reference="${prefix}_${suffix}_leg2">
+      <mu1>100000.0</mu1>
+      <mu2>100000.0</mu2>
+      <material>Gazebo/Black</material>
+    </gazebo>
+  </xacro:macro>
+
+  <xacro:macro name="leg3" params="prefix suffix reflect_front reflect_right">
+    <link name="${prefix}_${suffix}_leg3">
+      <visual>
+        <origin xyz="0 0 0" rpy="0 0 0" />
+        <geometry>
+          <box size="${leg3_depth} ${leg3_width} ${leg3_height}"/>
+        </geometry>
+        <material name="black"/>
+      </visual>
+      <collision>
+        <origin xyz="0 0 0" rpy="0 0 0" />
+        <geometry>
+          <box size="${leg3_depth} ${leg3_width} ${leg3_height}"/>
+        </geometry>
+      </collision>
+      <xacro:box_inertial mass="${leg3_mass}" width="${leg3_width}" depth="${leg3_depth}"/>
+    </link>
+    <joint name="${prefix}_${suffix}_leg3_joint" type="revolute">
+      <axis xyz="0 0 1"/>
+      <parent link="base_link"/>
+      <child link="${prefix}_${suffix}_leg3"/>
+      <origin xyz="${reflect_right*body_width/2.0} ${reflect_front*body_width/2.0} 0" rpy="0 0 ${reflect_front*pi/2.0 - reflect_front*reflect_right*pi/4.0}"/>
+      <limit lower="${leg3_joint_low}" upper="${leg3_joint_high}" effort="${servo_effort_limit}" velocity="${servo_vel}"/>
+      <dynamics friction="0.0" />
+    </joint>
+    <gazebo reference="${prefix}_${suffix}_leg3">
+      <mu1>100000.0</mu1>
+      <mu2>100000.0</mu2>
+      <material>Gazebo/White</material>
+    </gazebo>
+  </xacro:macro>
+
+  <xacro:macro name="leg" params="prefix suffix reflect_front reflect_right">
+    <xacro:leg3 prefix="${prefix}" suffix="${suffix}" reflect_front="${reflect_front}" reflect_right="${reflect_right}"/>
+    <xacro:leg2 prefix="${prefix}" suffix="${suffix}" reflect_right="${reflect_right}"/>
+    <xacro:leg1 prefix="${prefix}" suffix="${suffix}" reflect_right="${reflect_right}"/>
+    <xacro:leg_tip prefix="${prefix}" suffix="${suffix}" reflect_right="${reflect_right}"/>
+  </xacro:macro>
+
+  <xacro:leg prefix="front" suffix="right" reflect_front="1.0" reflect_right="1.0"/>
+  <xacro:leg prefix="front" suffix="left" reflect_front="1.0" reflect_right="-1.0"/>
+  <xacro:leg prefix="back" suffix="right" reflect_front="-1.0" reflect_right="1.0"/>
+  <xacro:leg prefix="back" suffix="left" reflect_front="-1.0" reflect_right="-1.0"/>
+
+  <!-- gazebo ros joint state pub plugin -->
+  <gazebo>
+    <plugin name="joint_state_publisher" filename="libgazebo_ros_joint_state_publisher.so">
+      <robotNamespace>/quadruped</robotNamespace>
+      <jointName>front_right_leg1_joint, front_right_leg2_joint, front_right_leg3_joint, front_left_leg1_joint, front_left_leg2_joint, front_left_leg3_joint, back_right_leg1_joint, back_right_leg2_joint, back_right_leg3_joint, back_left_leg1_joint, back_left_leg2_joint, back_left_leg3_joint</jointName>
+      <updateRate>60.0</updateRate>
+      <alwaysOn>true</alwaysOn>
+    </plugin>
+  </gazebo>
+
+  <!-- transmissions -->
+  <xacro:macro name="trans" params="num front_back right_left leg">
+    <transmission name="tran${num}">
+      <joint name="${front_back}_${right_left}_${leg}_joint">
+        <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+      </joint>
+      <type>transmission_interface/SimpleTransmission</type>
+      <actuator name="servo${num}">
+        <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+        <mechanicalReduction>1</mechanicalReduction>
+      </actuator>
+    </transmission>
+  </xacro:macro>
+
+  <xacro:trans num="1" front_back="front" right_left="right" leg="leg1"/>
+  <xacro:trans num="2" front_back="front" right_left="right" leg="leg2"/>
+  <xacro:trans num="3" front_back="front" right_left="right" leg="leg3"/>
+  <xacro:trans num="4" front_back="front" right_left="left" leg="leg1"/>
+  <xacro:trans num="5" front_back="front" right_left="left" leg="leg2"/>
+  <xacro:trans num="6" front_back="front" right_left="left" leg="leg3"/>
+  <xacro:trans num="7" front_back="back" right_left="right" leg="leg1"/>
+  <xacro:trans num="8" front_back="back" right_left="right" leg="leg2"/>
+  <xacro:trans num="9" front_back="back" right_left="right" leg="leg3"/>
+  <xacro:trans num="10" front_back="back" right_left="left" leg="leg1"/>
+  <xacro:trans num="11" front_back="back" right_left="left" leg="leg2"/>
+  <xacro:trans num="12" front_back="back" right_left="left" leg="leg3"/>
+
+</robot>

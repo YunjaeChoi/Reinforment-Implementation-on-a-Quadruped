@@ -1,0 +1,37 @@
+quadruped:
+  # Publish all joint states
+  #joint_state_controller:
+  #  type: joint_state_controller/JointStateController
+  #  publish_rate: 60
+
+  # controllers
+  joint_trajectory_controller:
+    type: effort_controllers/JointTrajectoryController
+
+    joints:
+      - front_right_leg1_joint
+      - front_right_leg2_joint
+      - front_right_leg3_joint
+      - front_left_leg1_joint
+      - front_left_leg2_joint
+      - front_left_leg3_joint
+      - back_right_leg1_joint
+      - back_right_leg2_joint
+      - back_right_leg3_joint
+      - back_left_leg1_joint
+      - back_left_leg2_joint
+      - back_left_leg3_joint
+
+    gains:
+      front_right_leg1_joint: {p: 200, d: 1, i: 30, i_clamp: 100}
+      front_right_leg2_joint: {p: 200, d: 1, i: 30, i_clamp: 100}
+      front_right_leg3_joint: {p: 200, d: 1, i: 30, i_clamp: 100}
+      front_left_leg1_joint: {p: 200, d: 1, i: 30, i_clamp: 100}
+      front_left_leg2_joint: {p: 200, d: 1, i: 30, i_clamp: 100}
+      front_left_leg3_joint: {p: 200, d: 1, i: 30, i_clamp: 100}
+      back_right_leg1_joint: {p: 200, d: 1, i: 30, i_clamp: 100}
+      back_right_leg2_joint: {p: 200, d: 1, i: 30, i_clamp: 100}
+      back_right_leg3_joint: {p: 200, d: 1, i: 30, i_clamp: 100}
+      back_left_leg1_joint: {p: 200, d: 1, i: 30, i_clamp: 100}
+      back_left_leg2_joint: {p: 200, d: 1, i: 30, i_clamp: 100}
+      back_left_leg3_joint: {p: 200, d: 1, i: 30, i_clamp: 100}

@@ -1,0 +1,5 @@
+<launch>
+	<!-- quadruped servo subscriber launch file -->
+	<node pkg="quadruped_servo_subscriber" type="quadruped_servo_subscriber.py" name="servo_subscriber" output="screen">
+	</node>
+</launch>
