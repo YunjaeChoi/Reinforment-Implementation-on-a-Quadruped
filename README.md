@@ -1,5 +1,5 @@
 # Reinforcement Learning Implementation on a Quadruped
-My project in Korea University. 
+An extension of a study of DDPG to control quadruped locomotion to evaluate additional cases with DRL, dreamerv2 and dreamerv3 and implement the best algorithm on a federated environment with multiple agents. 
 
 # Overview
 This project is a reinforment learning environment for a quadruped. It uses python 2.7, ROS (robot operating system) Kinetic Kame, Tensorflow, Gazebo simulation. The robot interacts with both Gazebo simulation and the real world using ROS. It is trained to walk forward in Gazebo simulation and can be deployed in a real robot. Deep Deterministic Policy Gradient(DDPG) is used for the robot.
