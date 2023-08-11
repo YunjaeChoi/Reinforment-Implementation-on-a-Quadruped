@@ -43,6 +43,6 @@
     <param name="publish_frequency" type="double" value="60.0" />
   </node>
 
-  <node pkg="quadruped" type="quadruped_learn.py" name="quadruped_learn.py" output="screen"/>
+  <node pkg="quadruped" type="quadruped_gazebo_act.py" name="quadruped_gazebo_act.py" output="screen"/>
 
 </launch>
