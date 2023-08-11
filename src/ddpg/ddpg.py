@@ -76,7 +76,7 @@ class OUNoise:
 
 class A2C:
     def __init__(self, state_shape, action_shape, actor_lr=0.001, critic_lr=0.001, gamma=0.99,use_layer_norm=True):
-        tf.reset_default_graph()
+        tf.compat.v1.reset_default_graph()
         self.state_shape = state_shape
         self.action_shape = action_shape
         self.nb_actions = np.prod(self.action_shape)
@@ -86,11 +86,12 @@ class A2C:
         self.use_layer_norm = use_layer_norm
 
         # inputs
-        self.input_state = tf.placeholder(tf.float32, (None,) + self.state_shape, name='input_state')
-        self.input_action = tf.placeholder(tf.float32, (None,) + self.action_shape, name='input_action')
-        self.input_state_target = tf.placeholder(tf.float32, (None,) + self.state_shape, name='input_state_target')
-        self.rewards = tf.placeholder(tf.float32, (None,1), name='rewards')
-        self.dones =tf.placeholder(tf.float32, (None,1), name='dones')
+        tf.compat.v1.disable_eager_execution()
+        self.input_state = tf.compat.v1.placeholder(tf.float32, (None,) + self.state_shape, name='input_state')
+        self.input_action = tf.compat.v1.placeholder(tf.float32, (None,) + self.action_shape, name='input_action')
+        self.input_state_target = tf.compat.v1.placeholder(tf.float32, (None,) + self.state_shape, name='input_state_target')
+        self.rewards = tf.compat.v1.placeholder(tf.float32, (None,1), name='rewards')
+        self.dones =tf.compat.v1.placeholder(tf.float32, (None,1), name='dones')
 
         # local and target nets
         self.actor = self.actor_net(self.input_state, self.nb_actions,name='actor',use_layer_norm=self.use_layer_norm)
@@ -110,7 +111,7 @@ class A2C:
 
 
     def actor_net(self, state, nb_actions, name, reuse=False, training=True, use_layer_norm=True):
-        with tf.variable_scope(name, reuse=reuse):
+        with tf.compat.v1.variable_scope(name, reuse=reuse):
             x = tf.layers.Dense(130)(state)
             if use_layer_norm:
                 x = tf.contrib.layers.layer_norm(x)
@@ -129,7 +130,7 @@ class A2C:
             return actions
 
     def critic_net(self, state, action, name, reuse=False, training=True, use_layer_norm=True):
-        with tf.variable_scope(name, reuse=reuse):
+        with tf.compat.v1.variable_scope(name, reuse=reuse):
             x = tf.layers.Dense(130)(state)
             if use_layer_norm:
                 x = tf.contrib.layers.layer_norm(x)
