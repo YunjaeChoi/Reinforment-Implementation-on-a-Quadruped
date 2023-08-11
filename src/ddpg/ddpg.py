@@ -7,7 +7,7 @@ import pickle
 class ReplayBuffer:
 
     def __init__(self, maxlen, action_shape, state_shape, dtype=np.float32):
-        """Initialize a ReplayBuffer object."""
+        # Initialize a ReplayBuffer object
         self.maxlen = maxlen
         self.start = 0
         self.length = 0
@@ -18,7 +18,7 @@ class ReplayBuffer:
         self.done_data = np.zeros((maxlen,1)).astype(dtype)
 
     def add(self, state, action, reward, next_state, done):
-        """Add a new experience to memory."""
+        # Add a new experience to memory
         if self.length == self.maxlen:
             self.start = (self.start + 1) % self.maxlen
         else:
@@ -31,7 +31,7 @@ class ReplayBuffer:
         self.done_data[idx] = done
 
     def sample(self, batch_size=64):
-        """Randomly sample a batch of experiences from memory."""
+        # Randomly sample a batch of experiences from memory
         idxs = np.random.randint(0,self.length - 1, size=batch_size)
         sampled = {'states':self.set_min_ndim(self.state_data[idxs]),
                    'actions':self.set_min_ndim(self.action_data[idxs]),
@@ -41,7 +41,7 @@ class ReplayBuffer:
         return sampled
 
     def set_min_ndim(self,x):
-        """set numpy array minimum dim to 2 (for sampling)"""
+        # set numpy array minimum dim to 2 (for sampling)
         if x.ndim < 2:
             return x.reshape(-1,1)
         else:
@@ -51,10 +51,10 @@ class ReplayBuffer:
         return self.length
 
 class OUNoise:
-    """Ornstein-Uhlenbeck process."""
-    #0.15 0.3
+    # Ornstein-Uhlenbeck process
+    # 0.15 0.3
     def __init__(self, size, mu=None, theta=0.15, sigma=0.03, dt=1e-2):
-        """Initialize parameters and noise process."""
+        # Initialize parameters and noise process
         self.size = size
         self.mu = mu if mu is not None else np.zeros(self.size)
         self.theta = theta
@@ -64,11 +64,11 @@ class OUNoise:
         self.reset()
 
     def reset(self):
-        """Reset the internal state (= noise) to mean (mu)."""
+        # Reset the internal state (= noise) to mean (mu)
         self.state = np.ones(self.size) * self.mu
 
     def sample(self):
-        """Update internal state and return it as a noise sample."""
+        # Update internal state and return it as a noise sample
         x = self.state
         dx = self.theta * (self.mu - x) * self.dt + self.sigma * np.sqrt(self.dt) * np.random.randn(len(x))
         self.state = x + dx
@@ -85,14 +85,14 @@ class A2C:
         self.gamma = gamma
         self.use_layer_norm = use_layer_norm
 
-        #inputs
+        # inputs
         self.input_state = tf.placeholder(tf.float32, (None,) + self.state_shape, name='input_state')
         self.input_action = tf.placeholder(tf.float32, (None,) + self.action_shape, name='input_action')
         self.input_state_target = tf.placeholder(tf.float32, (None,) + self.state_shape, name='input_state_target')
         self.rewards = tf.placeholder(tf.float32, (None,1), name='rewards')
         self.dones =tf.placeholder(tf.float32, (None,1), name='dones')
 
-        #local and target nets
+        # local and target nets
         self.actor = self.actor_net(self.input_state, self.nb_actions,name='actor',use_layer_norm=self.use_layer_norm)
         self.critic = self.critic_net(self.input_state, self.input_action,name='critic',use_layer_norm=self.use_layer_norm)
         self.actor_and_critic = self.critic_net(self.input_state,self.actor,name='critic',reuse=True,use_layer_norm=self.use_layer_norm)
@@ -164,7 +164,7 @@ class A2C:
 
 
 class DDPG:
-    """Reinforcement Learning agent that learns using DDPG."""
+    # Reinforcement Learning agent that learns using DDPG
     def __init__(self,state_shape,action_shape,batch_size=128,gamma=0.995,tau=0.005,
                     actor_lr=0.0001, critic_lr=0.001,use_layer_norm=True):
         self.state_shape = state_shape
@@ -181,18 +181,17 @@ class DDPG:
 
         # Algorithm parameters
         self.gamma = gamma # discount factor
-        self.tau = tau #soft update
+        self.tau = tau # soft update
         self.actor_lr = actor_lr
         self.critic_lr = critic_lr
 
-        #initialize
-        self.a2c = A2C(self.state_shape, self.action_shape, actor_lr=self.actor_lr, critic_lr=self.critic_lr,
-                       gamma=self.gamma, use_layer_norm=use_layer_norm)
+        # initialize
+        self.a2c = A2C(self.state_shape, self.action_shape, actor_lr=self.actor_lr, critic_lr=self.critic_lr, gamma=self.gamma, use_layer_norm=use_layer_norm)
         self.initialize()
         self.saver = tf.train.Saver()
         self.current_path = os.getcwd()
 
-        #initial episode vars
+        # initial episode vars
         self.last_state = None
         self.last_action = None
         self.total_reward = 0.0
@@ -226,32 +225,32 @@ class DDPG:
             return action
 
     def act(self, states):
-        """Returns actions for given state(s) as per current policy."""
+        # Returns actions for given state(s) as per current policy
         actions = self.sess.run(self.a2c.actor, feed_dict={self.a2c.input_state:states})
         noise = self.noise.sample()
         print('noise:',noise)
         return np.clip(actions + noise,a_min=-1.,a_max=1.).reshape(self.action_shape)
 
     def act_without_noise(self, states):
-        """Returns actions for given state(s) as per current policy."""
+        # Returns actions for given state(s) as per current policy
         actions = self.sess.run(self.a2c.actor, feed_dict={self.a2c.input_state:states})
         return np.array(actions).reshape(self.action_shape)
 
     def learn(self, experiences):
-        """Update policy and value parameters using given batch of experience tuples."""
+        # Update policy and value parameters using given batch of experience tuples
         states = experiences['states']
         actions = experiences['actions']
         rewards = experiences['rewards']
         next_states = experiences['next_states']
         dones = experiences['dones']
 
-        #actor critic update
+        # actor critic update
         self.sess.run([self.a2c.actor_opt,self.a2c.critic_opt],feed_dict={self.a2c.input_state:states,
                                                                               self.a2c.input_action:actions,
                                                                               self.a2c.input_state_target:next_states,
                                                                               self.a2c.rewards:rewards,
                                                                               self.a2c.dones:dones})
-        #target soft update
+        # target soft update
         self.sess.run(self.soft_update_ops)
 
 
