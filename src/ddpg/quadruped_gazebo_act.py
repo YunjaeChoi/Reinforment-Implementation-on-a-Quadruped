@@ -1,3 +1,4 @@
+#/usr/bin/env python3
 from __future__ import print_function
 from quadruped_env import QuadrupedEnvironment
 from ddpg import DDPG
