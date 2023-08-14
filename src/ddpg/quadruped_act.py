@@ -15,7 +15,7 @@ observation = env.reset()
 print('Reset!')
 time.sleep(1.0)
 
-for i in xrange(25):
+for i in range(25):
     action = agent.act_without_noise(observation)
     observation = env.step(action)
     #time.sleep(0.25)

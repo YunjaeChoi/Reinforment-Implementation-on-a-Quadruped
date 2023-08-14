@@ -1,2 +1,2 @@
-model_checkpoint_path: "/home/lics/catkin_ws/src/quadruped/src/model/model.ckpt"
-all_model_checkpoint_paths: "/home/lics/catkin_ws/src/quadruped/src/model/model.ckpt"
+model_checkpoint_path: "/home/sr42/catkin_ws/src/arthrobots/src/ddpg/model/model.ckpt"
+all_model_checkpoint_paths: "/home/sr42/catkin_ws/src/arthrobots/src/ddpg/model/model.ckpt"

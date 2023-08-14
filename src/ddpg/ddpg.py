@@ -112,56 +112,66 @@ class A2C:
 
     def actor_net(self, state, nb_actions, name, reuse=False, training=True, use_layer_norm=True):
         with tf.compat.v1.variable_scope(name, reuse=reuse):
-            x = tf.layers.Dense(130)(state)
+            x = tf.keras.layers.Dense(130)(state)
             if use_layer_norm:
-                x = tf.contrib.layers.layer_norm(x)
+                # x = tf.contrib.layers.layer_norm(x)
+                layer_norma = tf.keras.layers.LayerNormalization(axis = -1)
+                x = layer_norma(x)
             x = tf.nn.relu(x)
-            x = tf.layers.Dense(100)(x)
+            x = tf.keras.layers.Dense(100)(x)
             if use_layer_norm:
-                x = tf.contrib.layers.layer_norm(x)
+                # x = tf.contrib.layers.layer_norm(x)
+                layer_norma = tf.keras.layers.LayerNormalization(axis = -1)
+                x = layer_norma(x)
             x = tf.nn.relu(x)
-            x = tf.layers.Dense(80)(x)
+            x = tf.keras.layers.Dense(80)(x)
             if use_layer_norm:
-                x = tf.contrib.layers.layer_norm(x)
+                # x = tf.contrib.layers.layer_norm(x)
+                layer_norma = tf.keras.layers.LayerNormalization(axis = -1)
+                x = layer_norma(x)
             x = tf.nn.relu(x)
-            actions = tf.layers.Dense(nb_actions,
-                                      activation=tf.tanh,
-                                      kernel_initializer=tf.random_uniform_initializer(minval=-3e-3, maxval=3e-3))(x)
+            actions = tf.keras.layers.Dense(nb_actions, activation=tf.tanh, kernel_initializer=tf.random_uniform_initializer(minval=-3e-3, maxval=3e-3))(x)
             return actions
 
     def critic_net(self, state, action, name, reuse=False, training=True, use_layer_norm=True):
         with tf.compat.v1.variable_scope(name, reuse=reuse):
-            x = tf.layers.Dense(130)(state)
+            x = tf.keras.layers.Dense(130)(state)
             if use_layer_norm:
-                x = tf.contrib.layers.layer_norm(x)
+                # x = tf.contrib.layers.layer_norm(x)
+                layer_norma = tf.keras.layers.LayerNormalization(axis = -1)
+                x = layer_norma(x)
             x = tf.nn.relu(x)
             x = tf.concat([x, action], axis=-1)
-            x = tf.layers.Dense(100)(x)
+            x = tf.keras.layers.Dense(100)(x)
             if use_layer_norm:
-                x = tf.contrib.layers.layer_norm(x)
+                # x = tf.contrib.layers.layer_norm(x)
+                layer_norma = tf.keras.layers.LayerNormalization(axis = -1)
+                x = layer_norma(x)
             x = tf.nn.relu(x)
-            x = tf.layers.Dense(80)(x)
+            x = tf.keras.layers.Dense(80)(x)
             if use_layer_norm:
-                x = tf.contrib.layers.layer_norm(x)
+                # x = tf.contrib.layers.layer_norm(x)
+                layer_norma = tf.keras.layers.LayerNormalization(axis = -1)
+                x = layer_norma(x)
             x = tf.nn.relu(x)
-            q = tf.layers.Dense(1,kernel_initializer=tf.random_uniform_initializer(minval=-3e-3, maxval=3e-3))(x)
+            q = tf.keras.layers.Dense(1,kernel_initializer=tf.random_uniform_initializer(minval=-3e-3, maxval=3e-3))(x)
             return q
 
     def set_model_loss(self, critic, actor_and_critic, actor_target, actor_and_critic_target, rewards, dones, gamma):
         Q_targets = rewards + (gamma * actor_and_critic_target) * (1. - dones)
         actor_loss = tf.reduce_mean(-actor_and_critic)
-        tf.losses.add_loss(actor_loss)
-        critic_loss = tf.losses.huber_loss(Q_targets,critic)
+        tf.compat.v1.losses.add_loss(actor_loss)
+        critic_loss = tf.compat.v1.losses.huber_loss(Q_targets,critic)
         return actor_loss, critic_loss
 
     def set_model_opt(self, actor_loss, critic_loss, actor_lr, critic_lr):
-        train_vars = tf.trainable_variables()
+        train_vars = tf.compat.v1.trainable_variables()
         actor_vars = [var for var in train_vars if var.name.startswith('actor')]
         critic_vars = [var for var in train_vars if var.name.startswith('critic')]
-        with tf.control_dependencies(tf.get_collection(tf.GraphKeys.UPDATE_OPS)):
-            actor_opt = tf.train.AdamOptimizer(actor_lr).minimize(actor_loss, var_list=actor_vars)
-            critic_opt = tf.train.AdamOptimizer(critic_lr).minimize(critic_loss, var_list=critic_vars)
-        return actor_opt, critic_opt
+        with tf.control_dependencies(tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.UPDATE_OPS)):
+            actor_opt = tf.compat.v1.train.AdamOptimizer(actor_lr).minimize(actor_loss, var_list=actor_vars)
+            critic_opt = tf.compat.v1.train.AdamOptimizer(critic_lr).minimize(critic_loss, var_list=critic_vars)
+        return actor_opt, critic_opt    
 
 
 class DDPG:
@@ -189,7 +199,7 @@ class DDPG:
         # initialize
         self.a2c = A2C(self.state_shape, self.action_shape, actor_lr=self.actor_lr, critic_lr=self.critic_lr, gamma=self.gamma, use_layer_norm=use_layer_norm)
         self.initialize()
-        self.saver = tf.train.Saver()
+        self.saver = tf.compat.v1.train.Saver()
         self.current_path = os.getcwd()
 
         # initial episode vars
@@ -256,20 +266,20 @@ class DDPG:
 
 
     def initialize(self):
-        self.sess = tf.Session()
-        self.sess.run(tf.global_variables_initializer())
-        actor_var = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='actor')
-        actor_target_var = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='target_actor')
-        critic_var = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='critic')
-        critic_target_var = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='target_critic')
+        self.sess = tf.compat.v1.Session()
+        self.sess.run(tf.compat.v1.global_variables_initializer())
+        actor_var = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.TRAINABLE_VARIABLES, scope='actor')
+        actor_target_var = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.TRAINABLE_VARIABLES, scope='target_actor')
+        critic_var = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.TRAINABLE_VARIABLES, scope='critic')
+        critic_target_var = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.TRAINABLE_VARIABLES, scope='target_critic')
         target_init_ops = []
         soft_update_ops = []
         for var, target_var in zip(actor_var, actor_target_var):
-            target_init_ops.append(tf.assign(target_var,var))
-            soft_update_ops.append(tf.assign(target_var, (1. - self.tau) * target_var + self.tau * var))
+            target_init_ops.append(tf.compat.v1.assign(target_var,var))
+            soft_update_ops.append(tf.compat.v1.assign(target_var, (1. - self.tau) * target_var + self.tau * var))
         for var, target_var in zip(critic_var, critic_target_var):
-            target_init_ops.append(tf.assign(target_var,var))
-            soft_update_ops.append(tf.assign(target_var, (1. - self.tau) * target_var + self.tau * var))
+            target_init_ops.append(tf.compat.v1.assign(target_var,var))
+            soft_update_ops.append(tf.compat.v1.assign(target_var, (1. - self.tau) * target_var + self.tau * var))
         self.soft_update_ops = soft_update_ops
         self.sess.run(target_init_ops)
 
@@ -280,12 +290,12 @@ class DDPG:
         self.saver.restore(self.sess,path)
 
     def save_memory(self):
-        mem_file = open(self.current_path + '/agent_mem.p','w')
+        mem_file = open(self.current_path + '/agent_mem.p','wb')
         pickle.dump(self.memory,mem_file)
         mem_file.close()
 
     def load_memory(self,path):
-        mem_file = open(self.current_path + '/agent_mem.p','r')
+        mem_file = open(self.current_path + '/agent_mem.p','rb')
         mem = pickle.load(mem_file)
         self.memory = mem
         mem_file.close()
