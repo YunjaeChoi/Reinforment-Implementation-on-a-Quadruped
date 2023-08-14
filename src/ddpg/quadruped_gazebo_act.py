@@ -11,7 +11,7 @@ agent = DDPG(state_shape,action_shape,batch_size=128,gamma=0.995,tau=0.001,
 print('DDPG agent configured')
 agent.load_model(agent.current_path + '/model/model.ckpt')
 max_episode = 5
-for i in xrange(max_episode):
+for i in range(max_episode):
     print('env reset')
     observation, done = env.reset()
     action = agent.act_without_noise(observation)
