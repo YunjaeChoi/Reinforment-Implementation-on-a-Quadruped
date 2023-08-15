@@ -4,10 +4,12 @@ from quadruped_env import QuadrupedEnvironment
 from ddpg import OUNoise, DDPG
 import numpy as np
 
-env = QuadrupedEnvironment()
+env = QuadrupedEnvironment()    #functions - init, jsp_callback, normalize_js, imu_sub_callback
+                                # reset, step, 
 state_shape = env.state_shape
 action_shape = env.action_shape
 agent = DDPG(state_shape,action_shape,batch_size=128,gamma=0.995,tau=0.001, actor_lr=0.0001, critic_lr=0.001, use_layer_norm=True)
+
 print('DDPG agent configured')
 max_episode = 10000
 tot_rewards = []
