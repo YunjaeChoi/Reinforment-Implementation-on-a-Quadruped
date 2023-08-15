@@ -10,7 +10,7 @@ state_shape = env.state_shape
 action_shape = env.action_shape
 agent = A2C(state_shape,action_shape,actor_lr=0.001, critic_lr=0.001, gamma=0.99)
 
-print('A2C agent configured')
+print('A2C agent configured') #test
 max_episode = 10000
 tot_rewards = []
 print('env reset')
