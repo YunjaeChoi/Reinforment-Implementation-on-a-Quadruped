@@ -16,11 +16,16 @@ class A2C:
         self.critic = self.build_critic()
 
     def build_actor(self):
+        print("\n*******************")
+        print("action_shape : ",self.action_dim)
+        print("state_shape : ",self.state_dim)
+        print("\n*******************")
         model = tf.keras.Sequential([
             tf.keras.layers.Input(shape=(self.state_dim,)),
             tf.keras.layers.Dense(64, activation='relu'),
             tf.keras.layers.Dense(self.action_dim, activation='softmax')
         ])
+        
         model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=self.actor_lr), loss='categorical_crossentropy')
         return model
 
@@ -34,10 +39,15 @@ class A2C:
         return model
 
     def select_action(self, state):
+
+        print ("State : ",state)
+        print("\n************************************")
         # Sample an action from the actor's policy distribution
-        action_probs = self.actor.predict(np.array([state]))[0]
-        action = np.random.choice(self.action_dim, p=action_probs)
-        return action
+        action_probs = self.actor.predict(np.array(state))[0]
+        action_choice = np.random.choice(self.action_dim, p=action_probs)
+        print("Action after select_action() ",action_choice)
+        print("\n*************************************")
+        return action_probs
 
     def train(self, state, action, reward, next_state, done):
         state = np.array([state])
