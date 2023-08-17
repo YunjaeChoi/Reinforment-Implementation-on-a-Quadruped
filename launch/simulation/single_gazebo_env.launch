@@ -29,7 +29,7 @@
   <node name="urdf_spawner" pkg="gazebo_ros" type="spawn_model"
     args="-param robot_description -urdf -model quadruped"/>
 
-  <node name="rviz" pkg="rviz" type="rviz" args="-d $(arg rvizconfig)" />
+  <!-- <node name="rviz" pkg="rviz" type="rviz" args="-d $(arg rvizconfig)" /> -->
 
   <!-- Load joint controller configurations from YAML file to parameter server -->
   <rosparam command="load" file="$(find quadruped)/config/quadruped_control.yaml"/>
