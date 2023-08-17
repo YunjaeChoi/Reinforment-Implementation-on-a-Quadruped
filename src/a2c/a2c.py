@@ -1,5 +1,7 @@
 #!/usr/bin/ python3
 
+#this is the actor critic model which is used for the standalone implementation of a2c. The one on ddpg is different
+
 import tensorflow as tf
 import numpy as np
 
