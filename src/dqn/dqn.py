@@ -73,16 +73,25 @@ class OUNoise:
         self.state = x + dx
         return self.state
 
-class A2C:
-    # initializing actor critic model parameters
-    def __init__(self, state_shape, action_shape, actor_lr=0.001, critic_lr=0.001, gamma=0.99,use_layer_norm=True):
+
+# a DQN class 
+class DQN:
+
+    # Reinforcement Learning agent that learns using deep Q learning
+    def __init__(self,state_shape,action_shape,batch_size=128,gamma=0.995,tau=0.005, actor_lr=0.0001, critic_lr=0.001,use_layer_norm=True):
+        
+         # Algorithm parameters
+        self.gamma = gamma # discount factor
+        self.tau = tau # soft update
+        self.actor_lr = actor_lr
+        self.critic_lr = critic_lr
+
         tf.compat.v1.reset_default_graph()
         self.state_shape = state_shape
         self.action_shape = action_shape
         self.nb_actions = np.prod(self.action_shape)
         self.actor_lr = actor_lr
         self.critic_lr = critic_lr
-        self.gamma = gamma
         self.use_layer_norm = use_layer_norm
 
         # inputs
@@ -109,6 +118,26 @@ class A2C:
         self.actor_opt, self.critic_opt = self.set_model_opt(self.actor_loss, self.critic_loss,
                                                              self.actor_lr, self.critic_lr)
 
+        # Replay memory
+        self.buffer_size = 100000
+        self.batch_size = batch_size
+        self.memory = ReplayBuffer(self.buffer_size,self.action_shape, self.state_shape)
+
+        # Noise process
+        self.noise = OUNoise(self.nb_actions)
+
+        # initialize
+        self.initialize()
+        self.saver = tf.compat.v1.train.Saver()
+        self.current_path = os.getcwd()
+
+        # initial episode vars
+        self.last_state = None
+        self.last_action = None
+        self.total_reward = 0.0
+        self.count = 0
+        self.episode_num = 0
+        
     # actor network
     def actor_net(self, state, nb_actions, name, reuse=False, training=True, use_layer_norm=True):
         with tf.compat.v1.variable_scope(name, reuse=reuse):
@@ -176,42 +205,6 @@ class A2C:
             critic_opt = tf.compat.v1.train.AdamOptimizer(critic_lr).minimize(critic_loss, var_list=critic_vars)
         return actor_opt, critic_opt    
 
-
-class DDPG:
-
-    # Reinforcement Learning agent that learns using DDPG
-    def __init__(self,state_shape,action_shape,batch_size=128,gamma=0.995,tau=0.005, actor_lr=0.0001, critic_lr=0.001,use_layer_norm=True):
-        self.state_shape = state_shape
-        self.action_shape = action_shape
-        self.nb_actions = np.prod(self.action_shape)
-
-        # Replay memory
-        self.buffer_size = 100000
-        self.batch_size = batch_size
-        self.memory = ReplayBuffer(self.buffer_size,self.action_shape, self.state_shape)
-
-        # Noise process
-        self.noise = OUNoise(self.nb_actions)
-
-        # Algorithm parameters
-        self.gamma = gamma # discount factor
-        self.tau = tau # soft update
-        self.actor_lr = actor_lr
-        self.critic_lr = critic_lr
-
-        # initialize
-        self.a2c = A2C(self.state_shape, self.action_shape, actor_lr=self.actor_lr, critic_lr=self.critic_lr, gamma=self.gamma, use_layer_norm=use_layer_norm)
-        self.initialize()
-        self.saver = tf.compat.v1.train.Saver()
-        self.current_path = os.getcwd()
-
-        # initial episode vars
-        self.last_state = None
-        self.last_action = None
-        self.total_reward = 0.0
-        self.count = 0
-        self.episode_num = 0
-
     # reset episode variables
     def reset_episode_vars(self):
         self.last_state = None
@@ -242,14 +235,14 @@ class DDPG:
 
     def act(self, states):
         # Returns actions for given state(s) as per current policy
-        actions = self.sess.run(self.a2c.actor, feed_dict={self.a2c.input_state:states})
+        actions = self.sess.run(self.actor, feed_dict={self.input_state:states})
         noise = self.noise.sample()
         print('noise:',noise)
         return np.clip(actions + noise,a_min=-1.,a_max=1.).reshape(self.action_shape)
 
     def act_without_noise(self, states):
         # Returns actions for given state(s) as per current policy
-        actions = self.sess.run(self.a2c.actor, feed_dict={self.a2c.input_state:states})
+        actions = self.sess.run(self.actor, feed_dict={self.input_state:states})
         return np.array(actions).reshape(self.action_shape)
 
     def learn(self, experiences):
@@ -261,11 +254,11 @@ class DDPG:
         dones = experiences['dones']
 
         # actor critic update
-        self.sess.run([self.a2c.actor_opt,self.a2c.critic_opt],feed_dict={self.a2c.input_state:states,
-                                                                              self.a2c.input_action:actions,
-                                                                              self.a2c.input_state_target:next_states,
-                                                                              self.a2c.rewards:rewards,
-                                                                              self.a2c.dones:dones})
+        self.sess.run([self.actor_opt,self.critic_opt],feed_dict={self.input_state:states,
+                                                                              self.input_action:actions,
+                                                                              self.input_state_target:next_states,
+                                                                              self.rewards:rewards,
+                                                                              self.dones:dones})
         # target soft update
         self.sess.run(self.soft_update_ops)
 
