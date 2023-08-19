@@ -1,303 +1,155 @@
+import random
 import numpy as np
 import tensorflow as tf
-import time
-import os
-import pickle
+from collections import deque
+from tensorflow.python.keras import Sequential
+from tensorflow.python.keras.layers import Dense
+
 
 class ReplayBuffer:
+    """
+    Replay Buffer
 
-    def __init__(self, maxlen, action_shape, state_shape, dtype=np.float32):
-        # Initialize a ReplayBuffer object
-        self.maxlen = maxlen
-        self.start = 0
-        self.length = 0
-        self.state_data = np.zeros((maxlen,) + state_shape).astype(dtype)
-        self.action_data = np.zeros((maxlen,) + action_shape).astype(dtype)
-        self.reward_data = np.zeros((maxlen,1)).astype(dtype)
-        self.next_state_data = np.zeros((maxlen,) + state_shape).astype(dtype)
-        self.done_data = np.zeros((maxlen,1)).astype(dtype)
+    Stores and retrieves gameplay experiences
+    """
 
-    def add(self, state, action, reward, next_state, done):
-        # Add a new experience to memory
-        if self.length == self.maxlen:
-            self.start = (self.start + 1) % self.maxlen
-        else:
-            self.length += 1
-        idx = (self.start + self.length - 1) % self.maxlen
-        self.state_data[idx] = state
-        self.action_data[idx] = action
-        self.reward_data[idx] = reward
-        self.next_state_data[idx] = next_state
-        self.done_data[idx] = done
+    def __init__(self):
+        self.gameplay_experiences = deque(maxlen=1000000)
 
-    def sample(self, batch_size=64):
-        # Randomly sample a batch of experiences from memory
-        idxs = np.random.randint(0,self.length - 1, size=batch_size)
-        sampled = {'states':self.set_min_ndim(self.state_data[idxs]),
-                   'actions':self.set_min_ndim(self.action_data[idxs]),
-                   'rewards':self.set_min_ndim(self.reward_data[idxs]),
-                   'next_states':self.set_min_ndim(self.next_state_data[idxs]),
-                   'dones':self.set_min_ndim(self.done_data[idxs])}
-        return sampled
+    def store_gameplay_experience(self, state, next_state, reward, action,
+                                  done):
+        """
+        Records a single step (state transition) of gameplay experience.
 
-    def set_min_ndim(self,x):
-        # set numpy array minimum dim to 2 (for sampling)
-        if x.ndim < 2:
-            return x.reshape(-1,1)
-        else:
-            return x
+        :param state: the current game state
+        :param next_state: the game state after taking action
+        :param reward: the reward taking action at the current state brings
+        :param action: the action taken at the current state
+        :param done: a boolean indicating if the game is finished after
+        taking the action
+        :return: None
+        """
+        self.gameplay_experiences.append((state, next_state, reward, action,
+                                          done))
 
-    def __len__(self):
-        return self.length
+    def sample_gameplay_batch(self):
+        """
+        Samples a batch of gameplay experiences for training.
 
-class OUNoise:
-    # Ornstein-Uhlenbeck process of noise insertion
-    def __init__(self, size, mu=None, theta=0.15, sigma=0.03, dt=1e-2):
-        # Initialize parameters and noise process
-        self.size = size
-        self.mu = mu if mu is not None else np.zeros(self.size)
-        self.theta = theta
-        self.sigma = sigma
-        self.dt = dt
-        self.state = np.ones(self.size) * self.mu
-        self.reset()
-
-    def reset(self):
-        # Reset the internal state (= noise) to mean (mu)
-        self.state = np.ones(self.size) * self.mu
-
-    def sample(self):
-        # Update internal state and return it as a noise sample
-        x = self.state
-        dx = self.theta * (self.mu - x) * self.dt + self.sigma * np.sqrt(self.dt) * np.random.randn(len(x))
-        self.state = x + dx
-        return self.state
+        :return: a list of gameplay experiences
+        """
+        batch_size = min(128, len(self.gameplay_experiences))
+        sampled_gameplay_batch = random.sample(
+            self.gameplay_experiences, batch_size)
+        state_batch = []
+        next_state_batch = []
+        action_batch = []
+        reward_batch = []
+        done_batch = []
+        for gameplay_experience in sampled_gameplay_batch:
+            state_batch.append(gameplay_experience[0])
+            next_state_batch.append(gameplay_experience[1])
+            reward_batch.append(gameplay_experience[2])
+            action_batch.append(gameplay_experience[3])
+            done_batch.append(gameplay_experience[4])
+        return np.array(state_batch), np.array(next_state_batch), np.array(
+            action_batch), np.array(reward_batch), np.array(done_batch)
 
 
-# a DQN class 
 class DQN:
+    """
+    DQN Agent
 
-    # Reinforcement Learning agent that learns using deep Q learning
-    def __init__(self,state_shape,action_shape,batch_size=128,gamma=0.995,tau=0.005, actor_lr=0.0001, critic_lr=0.001,use_layer_norm=True):
-        
-         # Algorithm parameters
-        self.gamma = gamma # discount factor
-        self.tau = tau # soft update
-        self.actor_lr = actor_lr
-        self.critic_lr = critic_lr
+    The agent that explores the game and learn how to play the game by
+    learning how to predict the expected long-term return, the Q value given
+    a state-action pair.
+    """
 
-        tf.compat.v1.reset_default_graph()
-        self.state_shape = state_shape
-        self.action_shape = action_shape
-        self.nb_actions = np.prod(self.action_shape)
-        self.actor_lr = actor_lr
-        self.critic_lr = critic_lr
-        self.use_layer_norm = use_layer_norm
+    def __init__(self, state_shape, action_shape):
 
-        # inputs
-        tf.compat.v1.disable_eager_execution()
-        self.input_state = tf.compat.v1.placeholder(tf.float32, (None,) + self.state_shape, name='input_state')
-        self.input_action = tf.compat.v1.placeholder(tf.float32, (None,) + self.action_shape, name='input_action')
-        self.input_state_target = tf.compat.v1.placeholder(tf.float32, (None,) + self.state_shape, name='input_state_target')
-        self.rewards = tf.compat.v1.placeholder(tf.float32, (None,1), name='rewards')
-        self.dones =tf.compat.v1.placeholder(tf.float32, (None,1), name='dones')
+        self.state_shape = state_shape[0] # collects the first argument from the state shape tuple
+        self.action_shape = action_shape[0] # collects the first argument from the action shape tuple
 
-        # local and target nets
-        self.actor = self.actor_net(self.input_state, self.nb_actions,name='actor',use_layer_norm=self.use_layer_norm)
-        self.critic = self.critic_net(self.input_state, self.input_action,name='critic',use_layer_norm=self.use_layer_norm)
-        self.actor_and_critic = self.critic_net(self.input_state,self.actor,name='critic',reuse=True,use_layer_norm=self.use_layer_norm)
+        self.q_net = self._build_dqn_model()
+        self.target_q_net = self._build_dqn_model()
 
-        self.actor_target = self.actor_net(self.input_state_target, self.nb_actions, name='target_actor',use_layer_norm=self.use_layer_norm)
-        self.actor_and_critic_target = self.critic_net(self.input_state_target,
-                                                       self.actor_target, name='target_critic',use_layer_norm=self.use_layer_norm)
+    def _build_dqn_model(self):
+        """
+        Builds a deep neural net which predicts the Q values for all possible
+        actions given a state. The input should have the shape of the state, and
+        the output should have the same shape as the action space since we want
+        1 Q value per possible action.
 
-        self.actor_loss, self.critic_loss = self.set_model_loss(self.critic, self.actor_and_critic,
-                                                                self.actor_target, self.actor_and_critic_target,
-                                                                self.rewards, self.dones, self.gamma)
+        :return: Q network
+        """
+        q_net = Sequential()
+        q_net.add(Dense(64, input_dim=self.state_shape, activation='relu', kernel_initializer='he_uniform'))
+        q_net.add(Dense(32, activation='relu', kernel_initializer='he_uniform'))
+        q_net.add(Dense(self.action_shape, activation='linear', kernel_initializer='he_uniform'))
+        q_net.compile(optimizer='adam', loss='mse')
+        return q_net
 
-        self.actor_opt, self.critic_opt = self.set_model_opt(self.actor_loss, self.critic_loss,
-                                                             self.actor_lr, self.critic_lr)
+    def random_policy(self, state):
+        """
+        Outputs a random action
 
-        # Replay memory
-        self.buffer_size = 100000
-        self.batch_size = batch_size
-        self.memory = ReplayBuffer(self.buffer_size,self.action_shape, self.state_shape)
+        :param state: not used
+        :return: action
+        """
+        return np.random.randint(0, 2)
 
-        # Noise process
-        self.noise = OUNoise(self.nb_actions)
+    def collect_policy(self, state):
+        """
+        Similar to policy but with some randomness to encourage exploration.
 
-        # initialize
-        self.initialize()
-        self.saver = tf.compat.v1.train.Saver()
-        self.current_path = os.getcwd()
+        :param state: the game state
+        :return: action
+        """
+        if np.random.random() < 0.05:
+            return self.random_policy(state)
+        return self.policy(state)
 
-        # initial episode vars
-        self.last_state = None
-        self.last_action = None
-        self.total_reward = 0.0
-        self.count = 0
-        self.episode_num = 0
-        
-    # actor network
-    def actor_net(self, state, nb_actions, name, reuse=False, training=True, use_layer_norm=True):
-        with tf.compat.v1.variable_scope(name, reuse=reuse):
-            x = tf.keras.layers.Dense(130)(state)
-            if use_layer_norm:
-                # x = tf.contrib.layers.layer_norm(x)
-                layer_norma = tf.keras.layers.LayerNormalization(axis = -1)
-                x = layer_norma(x)
-            x = tf.nn.relu(x)
-            x = tf.keras.layers.Dense(100)(x)
-            if use_layer_norm:
-                # x = tf.contrib.layers.layer_norm(x)
-                layer_norma = tf.keras.layers.LayerNormalization(axis = -1)
-                x = layer_norma(x)
-            x = tf.nn.relu(x)
-            x = tf.keras.layers.Dense(80)(x)
-            if use_layer_norm:
-                # x = tf.contrib.layers.layer_norm(x)
-                layer_norma = tf.keras.layers.LayerNormalization(axis = -1)
-                x = layer_norma(x)
-            x = tf.nn.relu(x)
-            actions = tf.keras.layers.Dense(nb_actions, activation=tf.tanh, kernel_initializer=tf.random_uniform_initializer(minval=-3e-3, maxval=3e-3))(x)
-            return actions
-    
-    # critic network
-    def critic_net(self, state, action, name, reuse=False, training=True, use_layer_norm=True):
-        with tf.compat.v1.variable_scope(name, reuse=reuse):
-            x = tf.keras.layers.Dense(130)(state)
-            if use_layer_norm:
-                # x = tf.contrib.layers.layer_norm(x)
-                layer_norma = tf.keras.layers.LayerNormalization(axis = -1)
-                x = layer_norma(x)
-            x = tf.nn.relu(x)
-            x = tf.concat([x, action], axis=-1)
-            x = tf.keras.layers.Dense(100)(x)
-            if use_layer_norm:
-                # x = tf.contrib.layers.layer_norm(x)
-                layer_norma = tf.keras.layers.LayerNormalization(axis = -1)
-                x = layer_norma(x)
-            x = tf.nn.relu(x)
-            x = tf.keras.layers.Dense(80)(x)
-            if use_layer_norm:
-                # x = tf.contrib.layers.layer_norm(x)
-                layer_norma = tf.keras.layers.LayerNormalization(axis = -1)
-                x = layer_norma(x)
-            x = tf.nn.relu(x)
-            q = tf.keras.layers.Dense(1,kernel_initializer=tf.random_uniform_initializer(minval=-3e-3, maxval=3e-3))(x)
-            return q
+    def policy(self, state):
+        """
+        Takes a state from the game environment and returns an action that
+        has the highest Q value and should be taken as the next step.
 
-    # helper to set loss function
-    def set_model_loss(self, critic, actor_and_critic, actor_target, actor_and_critic_target, rewards, dones, gamma):
-        Q_targets = rewards + (gamma * actor_and_critic_target) * (1. - dones)
-        actor_loss = tf.reduce_mean(-actor_and_critic)
-        tf.compat.v1.losses.add_loss(actor_loss)
-        critic_loss = tf.compat.v1.losses.huber_loss(Q_targets,critic)
-        return actor_loss, critic_loss
+        :param state: the current game environment state
+        :return: an action
+        """
+        state_input = tf.convert_to_tensor([state[0]], dtype=tf.float32)
+        action_q = self.q_net(state_input)
+        action = np.argmax(action_q.numpy()[0], axis=0)
+        return action
 
-    # helper to set optimizer 
-    def set_model_opt(self, actor_loss, critic_loss, actor_lr, critic_lr):
-        train_vars = tf.compat.v1.trainable_variables()
-        actor_vars = [var for var in train_vars if var.name.startswith('actor')]
-        critic_vars = [var for var in train_vars if var.name.startswith('critic')]
-        with tf.control_dependencies(tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.UPDATE_OPS)):
-            actor_opt = tf.compat.v1.train.AdamOptimizer(actor_lr).minimize(actor_loss, var_list=actor_vars)
-            critic_opt = tf.compat.v1.train.AdamOptimizer(critic_lr).minimize(critic_loss, var_list=critic_vars)
-        return actor_opt, critic_opt    
+    def update_target_network(self):
+        """
+        Updates the current target_q_net with the q_net which brings all the
+        training in the q_net to the target_q_net.
 
-    # reset episode variables
-    def reset_episode_vars(self):
-        self.last_state = None
-        self.last_action = None
-        self.total_reward = 0.0
-        self.count = 0
+        :return: None
+        """
+        self.target_q_net.set_weights(self.q_net.get_weights())
 
-    # step function for internaliing learned parameters after each episode
-    def step(self, state, reward, done):
-        action = self.act(state)
-        self.count += 1
-        if self.last_state is not None and self.last_action is not None:
-            self.total_reward += reward
-            self.memory.add(self.last_state, self.last_action, reward, state, done)
-        if (len(self.memory) > self.batch_size):
-            experiences = self.memory.sample(self.batch_size)
-            self.learn(experiences)
-        self.last_state = state
-        self.last_action = action
-        if done:
-            self.episode_num += 1
-            eps_reward = self.total_reward
-            print('Episode {}: total reward={:7.4f}, count={}'.format(self.episode_num,self.total_reward,self.count))
-            self.reset_episode_vars()
-            return action, eps_reward
-        else:
-            return action
+    def train(self, batch):
+        """
+        Trains the underlying network with a batch of gameplay experiences to
+        help it better predict the Q values.
 
-    def act(self, states):
-        # Returns actions for given state(s) as per current policy
-        actions = self.sess.run(self.actor, feed_dict={self.input_state:states})
-        noise = self.noise.sample()
-        print('noise:',noise)
-        return np.clip(actions + noise,a_min=-1.,a_max=1.).reshape(self.action_shape)
-
-    def act_without_noise(self, states):
-        # Returns actions for given state(s) as per current policy
-        actions = self.sess.run(self.actor, feed_dict={self.input_state:states})
-        return np.array(actions).reshape(self.action_shape)
-
-    def learn(self, experiences):
-        # Update policy and value parameters using given batch of experience tuples
-        states = experiences['states']
-        actions = experiences['actions']
-        rewards = experiences['rewards']
-        next_states = experiences['next_states']
-        dones = experiences['dones']
-
-        # actor critic update
-        self.sess.run([self.actor_opt,self.critic_opt],feed_dict={self.input_state:states,
-                                                                              self.input_action:actions,
-                                                                              self.input_state_target:next_states,
-                                                                              self.rewards:rewards,
-                                                                              self.dones:dones})
-        # target soft update
-        self.sess.run(self.soft_update_ops)
-
-    # global a2c model initialization variables 
-    def initialize(self):
-        self.sess = tf.compat.v1.Session()
-        self.sess.run(tf.compat.v1.global_variables_initializer())
-        actor_var = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.TRAINABLE_VARIABLES, scope='actor')
-        actor_target_var = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.TRAINABLE_VARIABLES, scope='target_actor')
-        critic_var = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.TRAINABLE_VARIABLES, scope='critic')
-        critic_target_var = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.TRAINABLE_VARIABLES, scope='target_critic')
-        target_init_ops = []
-        soft_update_ops = []
-        for var, target_var in zip(actor_var, actor_target_var):
-            target_init_ops.append(tf.compat.v1.assign(target_var,var))
-            soft_update_ops.append(tf.compat.v1.assign(target_var, (1. - self.tau) * target_var + self.tau * var))
-        for var, target_var in zip(critic_var, critic_target_var):
-            target_init_ops.append(tf.compat.v1.assign(target_var,var))
-            soft_update_ops.append(tf.compat.v1.assign(target_var, (1. - self.tau) * target_var + self.tau * var))
-        self.soft_update_ops = soft_update_ops
-        self.sess.run(target_init_ops)
-
-    # save model weights
-    def save_model(self):
-        self.saver.save(self.sess,self.current_path + '/model/model.ckpt')
-
-    # load model weights
-    def load_model(self,path):
-        self.saver.restore(self.sess,path)
-
-    # save agent memory
-    def save_memory(self):
-        mem_file = open(self.current_path + '/agent_mem.p','wb')
-        pickle.dump(self.memory,mem_file)
-        mem_file.close()
-
-    # load agent memory
-    def load_memory(self,path):
-        mem_file = open(self.current_path + '/agent_mem.p','rb')
-        mem = pickle.load(mem_file)
-        self.memory = mem
-        mem_file.close()
+        :param batch: a batch of gameplay experiences
+        :return: training loss
+        """
+        state_batch, next_state_batch, action_batch, reward_batch, done_batch \
+            = batch
+        current_q = self.q_net(state_batch).numpy()
+        target_q = np.copy(current_q)
+        next_q = self.target_q_net(next_state_batch).numpy()
+        max_next_q = np.amax(next_q, axis=1)
+        for i in range(state_batch.shape[0]):
+            target_q_val = reward_batch[i]
+            if not done_batch[i]:
+                target_q_val += 0.95 * max_next_q[i]
+            target_q[i][action_batch[i]] = target_q_val
+        training_history = self.q_net.fit(x=state_batch, y=target_q, verbose=0)
+        loss = training_history.history['loss']
+        return loss

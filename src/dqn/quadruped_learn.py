@@ -1,80 +1,89 @@
 #/usr/bin/env python3
-from __future__ import print_function
+"""
+Training loop
+
+This module trains the DQN agent by trial and error. In this module the DQN
+agent will play the game episode by episode, store the gameplay experiences
+and then use the saved gameplay experiences to train the underlying model.
+"""
+from dqn import DQN, ReplayBuffer
 from quadruped_env import QuadrupedEnvironment
-from dqn import OUNoise, DQN
 import numpy as np
 
-# a script to initiate training of the quadruped robot on any currently published simulation environment
 
-# declaration of the environment
-env = QuadrupedEnvironment()    # functions - init, jsp_callback, normalize_js, imu_sub_callback
-                                # reset, step,
-                                
-# configuration of model parameters
-state_shape = env.state_shape
-action_shape = env.action_shape
+def evaluate_training_result(env, agent):
+    """
+    Evaluates the performance of the current DQN agent by using it to play a
+    few episodes of the game and then calculates the average reward it gets.
+    The higher the average reward is the better the DQN agent performs.
 
-# configuration of the model
-agent = DQN(state_shape,action_shape,batch_size=128,gamma=0.995,tau=0.001, actor_lr=0.0001, critic_lr=0.001, use_layer_norm=True)
+    :param env: the game environment
+    :param agent: the DQN agent
+    :return: average reward across episodes
+    """
+    total_reward = 0.0
+    episodes_to_play = 10
+    for i in range(episodes_to_play):
+        state = env.reset()
+        done = False
+        episode_reward = 0.0
+        while not done:
+            action = agent.policy(state)
+            next_state, reward, done, _ = env.step(action)
+            episode_reward += reward
+            state = next_state
+        total_reward += episode_reward
+    average_reward = total_reward / episodes_to_play
+    return average_reward
 
-print('DQN agent configured')
 
-# training parameters
-max_episode = 10000
-tot_rewards = []
+def collect_gameplay_experiences(env, agent, buffer):
+    """
+    Collects gameplay experiences by playing env with the instructions
+    produced by agent and stores the gameplay experiences in buffer.
 
-# environment reset
-print('env reset')
-observation, done = env.reset()
+    :param env: the game environment
+    :param agent: the DQN agent
+    :param buffer: the replay buffer
+    :return: None
+    """
+    state = env.reset()
+    done = False
+    while not done:
+        action = agent.collect_policy(state)
+        next_state, reward, done = env.step(action)
+        if done:
+            reward = -1.0
+        buffer.store_gameplay_experience(state, next_state,
+                                         reward, action, done)
+        state = next_state
 
-# state and action space configuration
-action = agent.act(observation)
-observation, reward, done = env.step(action)
-noise_sigma = 0.15
-save_cutoff = 1
-cutoff_count = 0
-save_count = 0
-curr_highest_eps_reward = -1000.0
 
-# training loop
-for i in range(max_episode):
+def train_model(max_episodes=50000):
+    """
+    Trains a DQN agent to play the CartPole game by trial and error
 
-    # introducing noise
-    if i % 100 == 0 and noise_sigma>0.03:
-        agent.noise = OUNoise(agent.nb_actions,sigma=noise_sigma)
-        noise_sigma /= 2.0
+    :return: None
+    """
+    buffer = ReplayBuffer()
+    env = QuadrupedEnvironment()
     
-    # iteration loop
-    step_num = 0
-    while done == False:
-        step_num += 1
-        action = agent.step(observation, reward, done)
-        observation, reward, done = env.step(action)
-        print('reward:',reward,'episode:', i, 'step:',step_num,'curr high eps reward:',curr_highest_eps_reward, 'saved:',save_count, 'cutoff count:', cutoff_count)
-    
-    # take step
-    action, eps_reward = agent.step(observation, reward, done)
-    tot_rewards.append(eps_reward)
+    state_shape = env.state_shape
+    action_shape = env.action_shape
 
-    # cutoff conditions
-    if eps_reward > curr_highest_eps_reward:
-        cutoff_count += 1
-        curr_highest_eps_reward = eps_reward
+    agent = DQN(state_shape, action_shape)
 
-    if cutoff_count >= save_cutoff:
-        save_count += 1
-        print('saving_model at episode:',i)
-        agent.save_model()
-        agent.save_memory()
-        cutoff_count = 0
+    for _ in range(100):
+        collect_gameplay_experiences(env, agent, buffer)
+    for episode_cnt in range(max_episodes):
+        collect_gameplay_experiences(env, agent, buffer)
+        gameplay_experience_batch = buffer.sample_gameplay_batch()
+        loss = agent.train(gameplay_experience_batch)
+        avg_reward = evaluate_training_result(env, agent)
+        print('Episode : {0}/{1}, Reward : {2}, loss : {3}'.format(episode_cnt, max_episodes, avg_reward, loss[0]))
+        if episode_cnt % 20 == 0:
+            agent.update_target_network()
+    env.close()
 
-    # reset environment after cutoff
-    observation, done = env.reset()
 
-# save rewards
-np.save('eps_rewards',tot_rewards)
-
-# plot rewards
-import matplotlib.pyplot as plt
-plt.plot(tot_rewards)
-# plt.show()
+train_model()
