@@ -1,6 +1,8 @@
-#! /usr/bin/env python
+#! /usr/bin/ python3
 from __future__ import print_function
 #from builtins import range
+#test it out from the other screen, works well enough but this keyboard sucks ass 
+# A2C algorithm
 
 import rospy
 import time
@@ -220,7 +222,8 @@ class QuadrupedEnvironment:
         return self.state, done
 
     def step(self, action):
-        print('action:',action)
+        print('action input in step():',action)
+        print("\n*******************************8+")
         action = action * self.joint_pos_range * self.action_coeff
         self.joint_pos = np.clip(self.joint_pos + action,a_min=self.joint_pos_low,a_max=self.joint_pos_high)
         self.all_joints.move_jtp(self.joint_pos)
@@ -257,7 +260,8 @@ class QuadrupedEnvironment:
             self.reward += -1.0
         else:
             done = False
-        print('state',self.state)
+        print('state after step()',self.state)
+        print("\n***********************")
 
         self.reward = np.clip(self.reward,a_min=-10.0,a_max=10.0)
         return self.state, self.reward, done

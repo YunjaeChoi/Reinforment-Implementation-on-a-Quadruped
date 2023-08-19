@@ -7,14 +7,16 @@ import numpy as np
 # a script to initiate training of the quadruped robot on any currently published simulation environment
 
 # declaration of the environment
-env = QuadrupedEnvironment()
-
+env = QuadrupedEnvironment()    # functions - init, jsp_callback, normalize_js, imu_sub_callback
+                                # reset, step,
+                                
 # configuration of model parameters
 state_shape = env.state_shape
 action_shape = env.action_shape
 
 # configuration of the model
 agent = DDPG(state_shape,action_shape,batch_size=128,gamma=0.995,tau=0.001, actor_lr=0.0001, critic_lr=0.001, use_layer_norm=True)
+
 print('DDPG agent configured')
 
 # training parameters
