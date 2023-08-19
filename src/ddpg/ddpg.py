@@ -51,8 +51,7 @@ class ReplayBuffer:
         return self.length
 
 class OUNoise:
-    # Ornstein-Uhlenbeck process
-    # 0.15 0.3
+    # Ornstein-Uhlenbeck process of noise insertion
     def __init__(self, size, mu=None, theta=0.15, sigma=0.03, dt=1e-2):
         # Initialize parameters and noise process
         self.size = size
@@ -75,6 +74,7 @@ class OUNoise:
         return self.state
 
 class A2C:
+    # initializing actor critic model parameters
     def __init__(self, state_shape, action_shape, actor_lr=0.001, critic_lr=0.001, gamma=0.99,use_layer_norm=True):
         tf.compat.v1.reset_default_graph()
         self.state_shape = state_shape
@@ -109,7 +109,7 @@ class A2C:
         self.actor_opt, self.critic_opt = self.set_model_opt(self.actor_loss, self.critic_loss,
                                                              self.actor_lr, self.critic_lr)
 
-
+    # acctor network
     def actor_net(self, state, nb_actions, name, reuse=False, training=True, use_layer_norm=True):
         with tf.compat.v1.variable_scope(name, reuse=reuse):
             x = tf.keras.layers.Dense(130)(state)
@@ -132,7 +132,8 @@ class A2C:
             x = tf.nn.relu(x)
             actions = tf.keras.layers.Dense(nb_actions, activation=tf.tanh, kernel_initializer=tf.random_uniform_initializer(minval=-3e-3, maxval=3e-3))(x)
             return actions
-
+    
+    # critic network
     def critic_net(self, state, action, name, reuse=False, training=True, use_layer_norm=True):
         with tf.compat.v1.variable_scope(name, reuse=reuse):
             x = tf.keras.layers.Dense(130)(state)
@@ -157,6 +158,7 @@ class A2C:
             q = tf.keras.layers.Dense(1,kernel_initializer=tf.random_uniform_initializer(minval=-3e-3, maxval=3e-3))(x)
             return q
 
+    # helper to set loss function
     def set_model_loss(self, critic, actor_and_critic, actor_target, actor_and_critic_target, rewards, dones, gamma):
         Q_targets = rewards + (gamma * actor_and_critic_target) * (1. - dones)
         actor_loss = tf.reduce_mean(-actor_and_critic)
@@ -164,6 +166,7 @@ class A2C:
         critic_loss = tf.compat.v1.losses.huber_loss(Q_targets,critic)
         return actor_loss, critic_loss
 
+    # helper to set optimizer 
     def set_model_opt(self, actor_loss, critic_loss, actor_lr, critic_lr):
         train_vars = tf.compat.v1.trainable_variables()
         actor_vars = [var for var in train_vars if var.name.startswith('actor')]
@@ -175,9 +178,9 @@ class A2C:
 
 
 class DDPG:
+
     # Reinforcement Learning agent that learns using DDPG
-    def __init__(self,state_shape,action_shape,batch_size=128,gamma=0.995,tau=0.005,
-                    actor_lr=0.0001, critic_lr=0.001,use_layer_norm=True):
+    def __init__(self,state_shape,action_shape,batch_size=128,gamma=0.995,tau=0.005, actor_lr=0.0001, critic_lr=0.001,use_layer_norm=True):
         self.state_shape = state_shape
         self.action_shape = action_shape
         self.nb_actions = np.prod(self.action_shape)
@@ -209,12 +212,14 @@ class DDPG:
         self.count = 0
         self.episode_num = 0
 
+    # reset episode variables
     def reset_episode_vars(self):
         self.last_state = None
         self.last_action = None
         self.total_reward = 0.0
         self.count = 0
 
+    # step function for internaliing learned parameters after each episode
     def step(self, state, reward, done):
         action = self.act(state)
         self.count += 1
@@ -264,7 +269,7 @@ class DDPG:
         # target soft update
         self.sess.run(self.soft_update_ops)
 
-
+    # global a2c model initialization variables 
     def initialize(self):
         self.sess = tf.compat.v1.Session()
         self.sess.run(tf.compat.v1.global_variables_initializer())
@@ -283,17 +288,21 @@ class DDPG:
         self.soft_update_ops = soft_update_ops
         self.sess.run(target_init_ops)
 
+    # save model weights
     def save_model(self):
         self.saver.save(self.sess,self.current_path + '/model/model.ckpt')
 
+    # load model weights
     def load_model(self,path):
         self.saver.restore(self.sess,path)
 
+    # save agent memory
     def save_memory(self):
         mem_file = open(self.current_path + '/agent_mem.p','wb')
         pickle.dump(self.memory,mem_file)
         mem_file.close()
 
+    # load agent memory
     def load_memory(self,path):
         mem_file = open(self.current_path + '/agent_mem.p','rb')
         mem = pickle.load(mem_file)

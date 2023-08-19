@@ -10,10 +10,14 @@ from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
 from std_srvs.srv import Empty
 from sensor_msgs.msg import JointState
 from sensor_msgs.msg import Imu
-
 import numpy as np
 
+# environment file - connects the model code to the appropriate rostopics for simulation
+
+# class containing all joints
 class AllJoints:
+
+    # joint controller parameters
     def __init__(self,joint_name_lst):
         rospy.loginfo('Waiting for joint trajectory Publisher')
         self.jtp = rospy.Publisher('/quadruped/joint_trajectory_controller/command',JointTrajectory,queue_size=1)
@@ -21,6 +25,7 @@ class AllJoints:
         self.joint_name_lst = joint_name_lst
         self.jtp_zeros = np.zeros(len(joint_name_lst))
 
+    # move based on trajectory
     def move_jtp(self, pos):
         jtp_msg = JointTrajectory()
         jtp_msg.joint_names = self.joint_name_lst
@@ -33,6 +38,7 @@ class AllJoints:
         jtp_msg.points.append(point)
         self.jtp.publish(jtp_msg)
 
+    # reset move through trajectory
     def reset_move_jtp(self, pos):
         jtp_msg = JointTrajectory()
         self.jtp.publish(jtp_msg)
@@ -47,7 +53,10 @@ class AllJoints:
         jtp_msg.points.append(point)
         self.jtp.publish(jtp_msg)
 
+# quadruped environment adapter
 class QuadrupedEnvironment:
+
+    # environment configuration parameters
     def __init__(self):
         rospy.init_node('joint_position_node')
         self.nb_joints = 12
@@ -104,14 +113,17 @@ class QuadrupedEnvironment:
         self.linear_acc_coeff = 0.1
         self.last_action = np.zeros(self.nb_joints)
 
+    # helper to normalize joint state value
     def normalize_joint_state(self,joint_pos):
         return joint_pos * self.joint_pos_coeff
 
+    # imu subscriber callback
     def imu_subscriber_callback(self,imu):
         self.orientation = np.array([imu.orientation.x,imu.orientation.y,imu.orientation.z,imu.orientation.w])
         self.angular_vel = np.array([imu.angular_velocity.x,imu.angular_velocity.y,imu.angular_velocity.z])
         self.linear_acc = np.array([imu.linear_acceleration.x,imu.linear_acceleration.y,imu.linear_acceleration.z])
 
+    # reset the environment
     def reset(self):
         self.joint_pos = self.starting_pos
         self.all_joints.reset_move_jtp(self.starting_pos)
@@ -125,6 +137,7 @@ class QuadrupedEnvironment:
 
         return self.state
 
+    # step function for after iteration
     def step(self, action):
         print('action:',action)
         action = action * self.joint_pos_range * self.action_coeff

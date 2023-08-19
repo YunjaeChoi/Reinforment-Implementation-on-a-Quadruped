@@ -1,0 +1,2 @@
+- setup-file:
+    local-name: /home/sr42/catkin_ws/src/arthrobots/build/devel/setup.sh

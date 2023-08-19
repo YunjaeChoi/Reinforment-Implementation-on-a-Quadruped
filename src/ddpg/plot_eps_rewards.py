@@ -1,3 +1,4 @@
+# single file to plot results (probably better off as a jupyter notebook)
 import matplotlib.pyplot as plt
 import numpy as np
 

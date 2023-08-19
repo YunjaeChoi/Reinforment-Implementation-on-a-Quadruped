@@ -13,13 +13,16 @@ from gazebo_msgs.srv import SetModelState, SetModelStateRequest, SetModelConfigu
 from gazebo_msgs.srv import GetModelState, GetModelStateRequest
 from gazebo_msgs.msg import ModelState
 from sensor_msgs.msg import Imu
-
 import numpy as np
 
+# environment file - connects the model code to the appropriate rostopics for simulation
+
+# class containing all joints
 class AllJoints:
+
+    # joint controller parameters
     def __init__(self,joint_name_lst):
-        self.jta = actionlib.SimpleActionClient('/quadruped/joint_trajectory_controller/follow_joint_trajectory',
-                                                FollowJointTrajectoryAction)
+        self.jta = actionlib.SimpleActionClient('/quadruped/joint_trajectory_controller/follow_joint_trajectory', FollowJointTrajectoryAction)
         rospy.loginfo('Waiting for joint trajectory action')
         self.jta.wait_for_server()
         rospy.loginfo('Found joint trajectory action!')
@@ -27,6 +30,7 @@ class AllJoints:
         self.joint_name_lst = joint_name_lst
         self.jtp_zeros = np.zeros(len(joint_name_lst))
 
+    # move joint to position
     def move(self, pos):
         msg = FollowJointTrajectoryActionGoal()
         msg.goal.trajectory.joint_names = self.joint_name_lst
@@ -36,6 +40,7 @@ class AllJoints:
         msg.goal.trajectory.points.append(point)
         self.jta.send_goal_and_wait(msg.goal)
 
+    # move based on trajectory
     def move_jtp(self, pos):
         jtp_msg = JointTrajectory()
         jtp_msg.joint_names = self.joint_name_lst
@@ -48,6 +53,7 @@ class AllJoints:
         jtp_msg.points.append(point)
         self.jtp.publish(jtp_msg)
 
+    # reset move to position movement
     def reset_move(self, pos):
         jtp_msg = JointTrajectory()
         self.jtp.publish(jtp_msg)
@@ -59,6 +65,7 @@ class AllJoints:
         msg.goal.trajectory.points.append(point)
         self.jta.send_goal(msg.goal)
 
+    # reset move through trajectory
     def reset_move_jtp(self, pos):
         jtp_msg = JointTrajectory()
         self.jtp.publish(jtp_msg)
@@ -73,7 +80,11 @@ class AllJoints:
         jtp_msg.points.append(point)
         self.jtp.publish(jtp_msg)
 
+
+# quadruped environment adapter
 class QuadrupedEnvironment:
+    
+    # environment configuration parameters
     def __init__(self):
         rospy.init_node('joint_position_node')
         self.nb_joints = 12
@@ -163,31 +174,38 @@ class QuadrupedEnvironment:
         self.linear_acc_coeff = 0.1
         self.last_action = np.zeros(self.nb_joints)
 
+    # helper to normalize joint state value
     def normalize_joint_state(self,joint_pos):
         return joint_pos * self.joint_pos_coeff
 
+    # joint state subscriber callback
     def joint_state_subscriber_callback(self,joint_state):
         self.joint_state = np.array(joint_state.position)
 
+    # imu subscriber callback
     def imu_subscriber_callback(self,imu):
         self.orientation = np.array([imu.orientation.x,imu.orientation.y,imu.orientation.z,imu.orientation.w])
         self.angular_vel = np.array([imu.angular_velocity.x,imu.angular_velocity.y,imu.angular_velocity.z])
         self.linear_acc = np.array([imu.linear_acceleration.x,imu.linear_acceleration.y,imu.linear_acceleration.z])
 
+    # reset the environment
     def reset(self):
-        #pause physics
+
+        # pause physics
         rospy.wait_for_service('/gazebo/pause_physics')
         try:
             self.pause_proxy()
         except rospy.ServiceException as e:
             print('/gazebo/pause_physics service call failed')
-        #set models pos from world
+
+        # set models pos from world
         rospy.wait_for_service('/gazebo/set_model_state')
         try:
             self.model_state_proxy(self.model_state_req)
         except rospy.ServiceException as e:
             print('/gazebo/set_model_state call failed')
-        #set model's joint config
+
+        # set model's joint config
         rospy.wait_for_service('/gazebo/set_model_configuration')
         try:
             self.model_config_proxy(self.model_config_req)
@@ -196,7 +214,8 @@ class QuadrupedEnvironment:
 
         self.joint_pos = self.starting_pos
         self.all_joints.reset_move_jtp(self.starting_pos)
-        #unpause physics
+
+        # unpause physics
         rospy.wait_for_service('/gazebo/unpause_physics')
         try:
             self.unpause_proxy()
@@ -219,6 +238,7 @@ class QuadrupedEnvironment:
         self.last_action = np.zeros(self.nb_joints)
         return self.state, done
 
+    # step function for after iteration
     def step(self, action):
         print('action:',action)
         action = action * self.joint_pos_range * self.action_coeff
