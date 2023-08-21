@@ -11,7 +11,7 @@ action_shape = env.action_shape[0] #this needs to be indexed too; same case as a
 agent = A2C(state_shape,action_shape,actor_lr=0.001, critic_lr=0.001, gamma=0.99)
 
 print('A2C agent configured') 
-max_episode = 10000
+max_episode = 100
 tot_rewards = []
 print('env reset')
 print("\n*************************")
@@ -44,7 +44,7 @@ for i in range(max_episode):
         print("\n*********************")
         observation, reward, done = env.step(action_final[0])
         print('reward:',reward,'episode:', i, 'step:',step_num,'curr high eps reward:',curr_highest_eps_reward, 'saved:',save_count, 'cutoff count:', cutoff_count)
-    action, eps_reward = env.step(action)
+    action, eps_reward, done = env.step(action)
     tot_rewards.append(eps_reward)
     if eps_reward > curr_highest_eps_reward:
         cutoff_count += 1

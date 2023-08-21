@@ -159,9 +159,9 @@ class QuadrupedEnvironment:
         self.reward = 0.0
         self.done = False
         self.episode_start_time = 0.0
-        self.max_sim_time = 15.0
+        self.max_sim_time = 8.0
         self.pos_z_limit = 0.18
-        self.action_coeff = 1.0
+        self.action_coeff = 0.2
         self.linear_acc_coeff = 0.1
         self.last_action = np.zeros(self.nb_joints)
 
@@ -223,9 +223,11 @@ class QuadrupedEnvironment:
 
     def step(self, action):
         print('action input in step():',action)
-        print("\n*******************************8+")
+        print("\n********************************")
         action = action * self.joint_pos_range * self.action_coeff
-        self.joint_pos = np.clip(self.joint_pos + action,a_min=self.joint_pos_low,a_max=self.joint_pos_high)
+        actual_action = action + self.joint_pos
+        # self.joint_pos = actual_action
+        self.joint_pos = np.clip(actual_action,a_min=self.joint_pos_low,a_max=self.joint_pos_high)
         self.all_joints.move_jtp(self.joint_pos)
         print('joint pos:',self.joint_pos)
 
