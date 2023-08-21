@@ -9,7 +9,7 @@ import os
 
 class A2C:
     
-    def __init__(self, state_dim, action_dim, actor_lr=0.001, critic_lr=0.005, gamma=0.99):
+    def __init__(self, state_dim, action_dim, actor_lr=0.1, critic_lr=0.1, gamma=0.99):
         self.state_dim = state_dim
         self.action_dim = action_dim
         self.actor_lr = actor_lr
@@ -18,15 +18,9 @@ class A2C:
 
         self.actor = self.build_actor()
         self.critic = self.build_critic()
-        # self.saver = tf.compat.v1.train.Saver()
-        # self.initialize()
         self.current_path = os.getcwd()
 
     def build_actor(self):
-        print("\n*******************")
-        print("action_shape : ",self.action_dim)
-        print("state_shape : ",self.state_dim)
-        print("\n*******************")
         model = tf.keras.Sequential([
             tf.keras.layers.Input(shape=(self.state_dim,)),
             tf.keras.layers.Dense(64, activation='relu'),
@@ -47,13 +41,10 @@ class A2C:
 
     def select_action(self, state):
 
-        print ("State : ",state)
+        print ("State input to 'select_action()': ",state)
         print("\n************************************")
         # Sample an action from the actor's policy distribution
         action_probs = self.actor.predict(np.array(state))[0]
-        action_choice = np.random.choice(self.action_dim, p=action_probs)
-        print("Action after select_action() ",action_choice)
-        print("\n*************************************")
         return action_probs
 
     def train(self, state, action, reward, next_state, done):

@@ -229,7 +229,8 @@ class QuadrupedEnvironment:
         # self.joint_pos = actual_action
         self.joint_pos = np.clip(actual_action,a_min=self.joint_pos_low,a_max=self.joint_pos_high)
         self.all_joints.move_jtp(self.joint_pos)
-        print('joint pos:',self.joint_pos)
+        print('joint pos:\n',self.joint_pos)
+        print("*************************************\n")
 
         rospy.sleep(15.0/60.0)
 
@@ -238,7 +239,7 @@ class QuadrupedEnvironment:
         pos = np.array([model_state.pose.position.x, model_state.pose.position.y, model_state.pose.position.z])
 
         self.reward = self.reward_coeff * (pos[1] - self.last_pos[1] - np.sqrt((pos[0]-self.last_pos[0])**2))
-        print('pos reward:', self.reward)
+        #print('pos reward:', self.reward)
         self.reward -=  0.75 * np.sqrt(np.sum((self.orientation)**2))
 
         normed_js = self.normalize_joint_state(self.joint_state)
@@ -253,7 +254,7 @@ class QuadrupedEnvironment:
         self.last_action = action
 
         curr_time = rospy.get_time()
-        print('time:',curr_time - self.episode_start_time)
+        #print('time:',curr_time - self.episode_start_time)
         if (curr_time - self.episode_start_time) > self.max_sim_time:
             done = True
             self.reset()
@@ -262,7 +263,7 @@ class QuadrupedEnvironment:
             self.reward += -1.0
         else:
             done = False
-        print('state after step()',self.state)
+        print('state value output by step()\n',self.state)
         print("\n***********************")
 
         self.reward = np.clip(self.reward,a_min=-10.0,a_max=10.0)
