@@ -9,7 +9,7 @@ import os
 
 class A2C:
     
-    def __init__(self, state_dim, action_dim, actor_lr=0.1, critic_lr=0.1, gamma=0.99):
+    def __init__(self, state_dim, action_dim, actor_lr=0.9, critic_lr=0.9, gamma=0.99):
         self.state_dim = state_dim
         self.action_dim = action_dim
         self.actor_lr = actor_lr
