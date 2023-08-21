@@ -18,8 +18,8 @@ class A2C:
 
         self.actor = self.build_actor()
         self.critic = self.build_critic()
-        self.saver = tf.compat.v1.train.Saver()
-        self.initialize()
+        # self.saver = tf.compat.v1.train.Saver()
+        # self.initialize()
         self.current_path = os.getcwd()
 
     def build_actor(self):
@@ -82,37 +82,37 @@ class A2C:
 
         self.critic.fit(state, target, verbose=0)
         
-    def initialize(self):
-        self.sess = tf.compat.v1.Session()
-        self.sess.run(tf.compat.v1.global_variables_initializer())
-        actor_var = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.TRAINABLE_VARIABLES, scope='actor')
-        actor_target_var = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.TRAINABLE_VARIABLES, scope='target_actor')
-        critic_var = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.TRAINABLE_VARIABLES, scope='critic')
-        critic_target_var = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.TRAINABLE_VARIABLES, scope='target_critic')
-        target_init_ops = []
-        soft_update_ops = []
-        for var, target_var in zip(actor_var, actor_target_var):
-            target_init_ops.append(tf.compat.v1.assign(target_var,var))
-            soft_update_ops.append(tf.compat.v1.assign(target_var, (1. - self.tau) * target_var + self.tau * var))
-        for var, target_var in zip(critic_var, critic_target_var):
-            target_init_ops.append(tf.compat.v1.assign(target_var,var))
-            soft_update_ops.append(tf.compat.v1.assign(target_var, (1. - self.tau) * target_var + self.tau * var))
-        self.soft_update_ops = soft_update_ops
-        self.sess.run(target_init_ops)
+    # def initialize(self):
+    #     self.sess = tf.compat.v1.Session()
+    #     self.sess.run(tf.compat.v1.global_variables_initializer())
+    #     actor_var = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.TRAINABLE_VARIABLES, scope='actor')
+    #     actor_target_var = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.TRAINABLE_VARIABLES, scope='target_actor')
+    #     critic_var = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.TRAINABLE_VARIABLES, scope='critic')
+    #     critic_target_var = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.TRAINABLE_VARIABLES, scope='target_critic')
+    #     target_init_ops = []
+    #     soft_update_ops = []
+    #     for var, target_var in zip(actor_var, actor_target_var):
+    #         target_init_ops.append(tf.compat.v1.assign(target_var,var))
+    #         soft_update_ops.append(tf.compat.v1.assign(target_var, (1. - self.tau) * target_var + self.tau * var))
+    #     for var, target_var in zip(critic_var, critic_target_var):
+    #         target_init_ops.append(tf.compat.v1.assign(target_var,var))
+    #         soft_update_ops.append(tf.compat.v1.assign(target_var, (1. - self.tau) * target_var + self.tau * var))
+    #     self.soft_update_ops = soft_update_ops
+    #     self.sess.run(target_init_ops)
 
-    def save_model(self):
-        self.saver.save(self.sess,self.current_path + '/model/model.ckpt')
+    # def save_model(self):
+    #     self.saver.save(self.sess,self.current_path + '/model/model.ckpt')
 
-    def load_model(self,path):
-        self.saver.restore(self.sess,path)
+    # def load_model(self,path):
+    #     self.saver.restore(self.sess,path)
 
-    def save_memory(self):
-        mem_file = open(self.current_path + '/agent_mem.p','wb')
-        pickle.dump(self.memory,mem_file)
-        mem_file.close()
+    # def save_memory(self):
+    #     mem_file = open(self.current_path + '/agent_mem.p','wb')
+    #     pickle.dump(self.memory,mem_file)
+    #     mem_file.close()
 
-    def load_memory(self,path):
-        mem_file = open(self.current_path + '/agent_mem.p','rb')
-        mem = pickle.load(mem_file)
-        self.memory = mem
-        mem_file.close()
+    # def load_memory(self,path):
+    #     mem_file = open(self.current_path + '/agent_mem.p','rb')
+    #     mem = pickle.load(mem_file)
+    #     self.memory = mem
+    #     mem_file.close()

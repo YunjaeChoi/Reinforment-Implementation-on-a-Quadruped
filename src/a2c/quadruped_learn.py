@@ -42,7 +42,7 @@ for i in range(max_episode):
         action_final = agent.select_action(state_val)
         print("Action after reset ",action_final)
         print("\n*********************")
-        observation, reward, done = env.step(action_final[0])
+        observation, reward, done = env.step(action_final.max())
         print('reward:',reward,'episode:', i, 'step:',step_num,'curr high eps reward:',curr_highest_eps_reward, 'saved:',save_count, 'cutoff count:', cutoff_count)
     action, eps_reward, done = env.step(action)
     tot_rewards.append(eps_reward)
@@ -51,9 +51,9 @@ for i in range(max_episode):
         curr_highest_eps_reward = eps_reward
     if cutoff_count >= save_cutoff:
         save_count += 1
-        print('saving_model at episode:',i)
-        agent.save_model()
-        agent.save_memory()
+        # print('saving_model at episode:',i)
+        # agent.save_model()
+        # agent.save_memory()
         cutoff_count = 0
     observation, done = env.reset()
 np.save('eps_rewards',tot_rewards)
