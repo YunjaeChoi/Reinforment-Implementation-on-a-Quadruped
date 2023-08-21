@@ -45,7 +45,7 @@ class AllJoints:
         jtp_msg = JointTrajectory()
         jtp_msg.joint_names = self.joint_name_lst
         point = JointTrajectoryPoint()
-        point.positions = pos
+        point.positions = pos[0]
         point.velocities = self.jtp_zeros
         point.accelerations = self.jtp_zeros
         point.effort = self.jtp_zeros

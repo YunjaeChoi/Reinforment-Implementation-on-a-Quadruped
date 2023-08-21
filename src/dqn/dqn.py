@@ -96,7 +96,8 @@ class DQN:
         :param state: not used
         :return: action
         """
-        return np.random.randint(0, 2)
+        return list(np.random.random_sample((12,)))
+        # return np.random.randint(0, 2)
 
     def collect_policy(self, state):
         """
@@ -119,7 +120,7 @@ class DQN:
         """
         state_input = tf.convert_to_tensor([state[0]], dtype=tf.float32)
         action_q = self.q_net(state_input)
-        action = np.argmax(action_q.numpy()[0], axis=0)
+        action = action_q.numpy()[0]
         return action
 
     def update_target_network(self):

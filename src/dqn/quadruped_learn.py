@@ -54,14 +54,13 @@ def collect_gameplay_experiences(env, agent, buffer):
         next_state, reward, done = env.step(action)
         if done:
             reward = -1.0
-        buffer.store_gameplay_experience(state, next_state,
-                                         reward, action, done)
+        buffer.store_gameplay_experience(state, next_state, reward, action, done)
         state = next_state
 
 
 def train_model(max_episodes=50000):
     """
-    Trains a DQN agent to play the CartPole game by trial and error
+    Trains a DQN agent to play the quadruped game by trial and error
 
     :return: None
     """
