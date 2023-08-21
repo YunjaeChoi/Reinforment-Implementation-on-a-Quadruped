@@ -1,7 +1,7 @@
 #! /usr/bin/ python3
 from __future__ import print_function
 #from builtins import range
-#test it out from the other screen, works well enough but this keyboard sucks ass 
+
 # A2C algorithm
 
 import rospy
@@ -140,7 +140,7 @@ class QuadrupedEnvironment:
                                     -1.0, -1.0, -1.0,
                                     -1.0, -1.0, -1.0,
                                     -1.0, -1.0, -1.0])
-        self.joint_pos_coeff = 3.0
+        self.joint_pos_coeff = 5.0
         self.joint_pos_range = self.joint_pos_high - self.joint_pos_low
         self.joint_pos_mid = (self.joint_pos_high + self.joint_pos_low) / 2.0
         self.joint_pos = self.starting_pos
@@ -161,8 +161,8 @@ class QuadrupedEnvironment:
         self.episode_start_time = 0.0
         self.max_sim_time = 8.0
         self.pos_z_limit = 0.18
-        self.action_coeff = 0.2
-        self.linear_acc_coeff = 0.1
+        self.action_coeff = 0.3
+        self.linear_acc_coeff = 1
         self.last_action = np.zeros(self.nb_joints)
 
     def normalize_joint_state(self,joint_pos):
